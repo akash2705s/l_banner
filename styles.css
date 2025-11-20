@@ -1,0 +1,238 @@
+:root {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
+  background: #060a12;
+  color: #f1f5f9;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#player-shell {
+  position: relative;
+  width: min(90vw, 1280px);
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+  --lb-left-width: 0px;
+  --lb-right-width: 0px;
+  --lb-top-height: 0px;
+  --lb-bottom-height: 0px;
+}
+
+#video-area {
+  position: absolute;
+  top: var(--lb-top-height);
+  left: var(--lb-left-width);
+  width: calc(100% - var(--lb-left-width) - var(--lb-right-width));
+  height: calc(100% - var(--lb-top-height) - var(--lb-bottom-height));
+  transition: width 1000ms cubic-bezier(0.4, 0, 0.2, 1), 
+              height 1000ms cubic-bezier(0.4, 0, 0.2, 1), 
+              top 1000ms cubic-bezier(0.4, 0, 0.2, 1),
+              left 1000ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: #000;
+  overflow: hidden;
+}
+
+#shaka-player-container {
+  position: absolute;
+  inset: 0;
+}
+
+#video-element {
+  width: 100%;
+  height: 100%;
+}
+
+#l-banner-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lb-segment {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  pointer-events: auto;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 1000ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 1000ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#l-banner-host.lb-animating-in .lb-segment {
+  animation: lbFadeInScale 1000ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+#l-banner-host.lb-visible .lb-segment {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#l-banner-host.lb-animating-out .lb-segment {
+  animation: lbFadeOutScale 1000ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes lbFadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lbFadeOutScale {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.lb-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lb-button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lb-button--vsat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: auto;
+}
+
+.lb-button--vsat:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.lb-button--vsat:focus {
+  outline: 2px solid rgba(99, 102, 241, 0.8);
+  outline-offset: 2px;
+}
+
+.lb-button--primary {
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.lb-button--secondary {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.lb-button--relative {
+  position: relative;
+  margin-top: auto;
+  margin-bottom: 12px;
+}
+
+.lb-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(5, 5, 5, 0.65);
+  color: #f8fafc;
+  cursor: pointer;
+}
+
+.lb-poll {
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  color: #f8fafc;
+  text-align: left;
+}
+
+.lb-poll--question {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(2, 6, 23, 0.8));
+}
+
+.lb-poll__eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.lb-poll__question {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.lb-poll__options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lb-poll__option {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lb-poll__option:hover {
+  background: rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
+}
+
+.lb-poll__option--selected {
+  background: #10b981 !important;
+  color: #022c22;
+  border-color: transparent;
+}
+

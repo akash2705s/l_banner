@@ -1,0 +1,19 @@
+{
+  "name": "l_banner",
+  "version": "1.0.0",
+  "description": "A single-file, CDN-ready video player with Shaka Player and L-Banner integration. Embed it anywhere with a simple script tag.",
+  "main": "main.js",
+  "scripts": {
+    "build": "node build.js",
+    "build:js": "esbuild build/lbanner-entry.js --bundle --minify --format=iife --sourcemap --outfile=dist/lbanner-player.min.js",
+    "build:css": "esbuild build/lbanner-entry.js --bundle --minify --outfile=dist/lbanner-player.min.css --loader:.css=text",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "esbuild": "^0.27.0"
+  }
+}

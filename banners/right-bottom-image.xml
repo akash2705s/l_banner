@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="4.1">
+  <Ad id="lb-right-bottom-image">
+    <InLine>
+      <AdSystem version="4.1">ExampleAdServer</AdSystem>
+      <AdTitle>Right Bottom Image Banner</AdTitle>
+      <Impression><![CDATA[https://tracker.example.com/impression/right-bottom-image]]></Impression>
+
+      <Creatives>
+        <Creative id="linear-right-bottom-image" sequence="1">
+          <Linear>
+            <Duration>00:01:00</Duration>
+            <MediaFiles>
+              <MediaFile
+                delivery="streaming"
+                type="application/dash+xml"
+                width="1920"
+                height="1080"
+                bitrate="3500"><![CDATA[https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd]]></MediaFile>
+            </MediaFiles>
+            <TrackingEvents>
+              <Tracking event="start"><![CDATA[https://track.example.com/video/start]]></Tracking>
+              <Tracking event="firstQuartile"><![CDATA[https://track.example.com/video/q1]]></Tracking>
+              <Tracking event="midpoint"><![CDATA[https://track.example.com/video/q2]]></Tracking>
+              <Tracking event="thirdQuartile"><![CDATA[https://track.example.com/video/q3]]></Tracking>
+              <Tracking event="complete"><![CDATA[https://track.example.com/video/complete]]></Tracking>
+            </TrackingEvents>
+            <VideoClicks>
+              <ClickThrough><![CDATA[https://brand.example.com/learn-more]]></ClickThrough>
+            </VideoClicks>
+          </Linear>
+        </Creative>
+      </Creatives>
+
+      <Extensions>
+        <Extension type="l-banner">
+          <LBanner>
+            <!-- Vertical segment (right side) - causes video to shrink from right -->
+            <Vertical>
+              <ImageURL><![CDATA[https://images.unsplash.com/photo-1557683316-973673baf926?w=250&h=400&fit=crop]]></ImageURL>
+              <BackgroundColor>#ec4899</BackgroundColor>
+              <Width>250</Width>
+              <Height>400</Height>
+              <X>1030</X>
+              <Y>0</Y>
+              <Buttons>
+                <Button id="btn-learn-more" defaultFocus="true" role="primary">
+                  <Label>Learn More</Label>
+                  <Position>
+                    <X>1080</X>
+                    <Y>320</Y>
+                    <Width>150</Width>
+                    <Height>50</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough><![CDATA[https://example.com/learn]]></ClickThrough>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://track.example.com/learn-click]]>
+                    </Tracking>
+                    <Tracking event="viewable">
+                      <![CDATA[https://track.example.com/learn-view]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+              </Buttons>
+            </Vertical>
+            <!-- Horizontal segment (bottom side) - causes video to shrink from bottom -->
+            <!-- X position set to start from right segment, extends to right edge -->
+            <Horizontal>
+              <ImageURL><![CDATA[https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=120&fit=crop]]></ImageURL>
+              <BackgroundColor>#8b5cf6</BackgroundColor>
+              <Width>1280</Width>
+              <Height>120</Height>
+              <X>0</X>
+              <Y>700</Y>
+              <Buttons>
+                <!-- No buttons on horizontal segment -->
+              </Buttons>
+            </Horizontal>
+            <!-- Display timing: 1s animate in, 8s visible, 1s animate out = 10s total -->
+            <Display>
+              <StartOffset>00:00:20</StartOffset>
+              <EndOffset>00:00:30</EndOffset>
+            </Display>
+          </LBanner>
+        </Extension>
+      </Extensions>
+    </InLine>
+  </Ad>
+</VAST>
+

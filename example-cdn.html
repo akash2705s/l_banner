@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>L-Banner CDN Example</title>
+
+    <!-- L-Banner CSS via jsDelivr CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/akash768145s/L2@1.0/lbanner-player.min.css"
+    />
+  </head>
+  <body>
+    <div
+      id="player-shell"
+      class="shaka-player-container"
+      data-shaka-player-container
+    >
+      <div id="video-area" data-role="video-area">
+        <video
+          id="video-element"
+          class="shaka-video"
+          data-shaka-player
+          autoplay
+          muted
+          playsinline
+        ></video>
+      </div>
+      <div id="l-banner-host" aria-live="polite"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/gh/akash768145s/L2@1.0/lbanner-player.min.js"></script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          await window.LBannerPlayer.init({
+            apiKey: "demo-api-key-1234",
+            vastUrl: "./banners/left-bottom-image.xml",
+          });
+        } catch (error) {
+          console.error("Failed to initialize L-Banner:", error);
+        }
+      });
+    </script>
+  </body>
+</html>

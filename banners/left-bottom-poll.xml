@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="4.1">
+  <Ad id="lb-left-bottom-poll">
+    <InLine>
+      <AdSystem version="4.1">ExampleAdServer</AdSystem>
+      <AdTitle>Left Bottom Poll Banner</AdTitle>
+      <Impression><![CDATA[https://tracker.example.com/impression/left-bottom-poll]]></Impression>
+
+      <Creatives>
+        <Creative id="linear-left-bottom-poll" sequence="1">
+          <Linear>
+            <Duration>00:01:00</Duration>
+            <MediaFiles>
+              <MediaFile
+                delivery="streaming"
+                type="application/dash+xml"
+                width="1920"
+                height="1080"
+                bitrate="3500"><![CDATA[https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd]]></MediaFile>
+            </MediaFiles>
+            <TrackingEvents>
+              <Tracking event="start"><![CDATA[https://track.example.com/video/start]]></Tracking>
+              <Tracking event="firstQuartile"><![CDATA[https://track.example.com/video/q1]]></Tracking>
+              <Tracking event="midpoint"><![CDATA[https://track.example.com/video/q2]]></Tracking>
+              <Tracking event="thirdQuartile"><![CDATA[https://track.example.com/video/q3]]></Tracking>
+              <Tracking event="complete"><![CDATA[https://track.example.com/video/complete]]></Tracking>
+            </TrackingEvents>
+            <VideoClicks>
+              <ClickThrough><![CDATA[https://brand.example.com/poll-cta]]></ClickThrough>
+            </VideoClicks>
+          </Linear>
+        </Creative>
+      </Creatives>
+
+      <Extensions>
+        <Extension type="l-banner">
+          <LBanner>
+            <!-- Vertical segment (left side) with poll options as buttons -->
+            <Vertical>
+              <BackgroundColor>#0f172a</BackgroundColor>
+              <Width>260</Width>
+              <Height>400</Height>
+              <X>0</X>
+              <Y>0</Y>
+              <Poll>
+                <Heading>Choose an answer</Heading>
+                <Question></Question>
+              </Poll>
+              <Buttons>
+                <!-- Poll option buttons -->
+                <Button id="poll-option-1" role="secondary">
+                  <Label>Professor X</Label>
+                  <Position>
+                    <X>20</X>
+                    <Y>80</Y>
+                    <Width>220</Width>
+                    <Height>50</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough><![CDATA[https://example.com/poll/vote?option=1]]></ClickThrough>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://track.example.com/poll-option-1]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+                <Button id="poll-option-2" role="secondary">
+                  <Label>Captain Picard</Label>
+                  <Position>
+                    <X>20</X>
+                    <Y>140</Y>
+                    <Width>220</Width>
+                    <Height>50</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough><![CDATA[https://example.com/poll/vote?option=2]]></ClickThrough>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://track.example.com/poll-option-2]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+                <Button id="poll-option-3" role="secondary">
+                  <Label>Jean-Luc Picard</Label>
+                  <Position>
+                    <X>20</X>
+                    <Y>200</Y>
+                    <Width>220</Width>
+                    <Height>50</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough><![CDATA[https://example.com/poll/vote?option=3]]></ClickThrough>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://track.example.com/poll-option-3]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+                <Button id="poll-option-4" role="secondary">
+                  <Label>Gandalf</Label>
+                  <Position>
+                    <X>20</X>
+                    <Y>260</Y>
+                    <Width>220</Width>
+                    <Height>50</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough><![CDATA[https://example.com/poll/vote?option=4]]></ClickThrough>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://track.example.com/poll-option-4]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+              </Buttons>
+            </Vertical>
+            <!-- Horizontal segment (bottom side) with poll question -->
+            <Horizontal>
+              <BackgroundColor>#1e1b4b</BackgroundColor>
+              <Width>1020</Width>
+              <Height>140</Height>
+              <X>260</X>
+              <Y>700</Y>
+              <Poll>
+                <Tagline>Trivia question</Tagline>
+                <Question>Who is the character shown at the 15s mark?</Question>
+              </Poll>
+              <Buttons>
+                <!-- No buttons on poll question segment -->
+              </Buttons>
+            </Horizontal>
+            <!-- Display timing: 1s animate in, 8s visible, 1s animate out = 10s total -->
+            <Display>
+              <StartOffset>00:00:30</StartOffset>
+              <EndOffset>00:00:40</EndOffset>
+            </Display>
+          </LBanner>
+        </Extension>
+      </Extensions>
+    </InLine>
+  </Ad>
+</VAST>
+
