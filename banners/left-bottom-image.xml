@@ -97,7 +97,7 @@
             </Horizontal>
             <!-- Display timing: 1s animate in, 8s visible, 1s animate out = 10s total -->
             <Display>
-              <StartOffset>00:00:10</StartOffset>
+              <StartOffset>00:00:15</StartOffset>
               <EndOffset>00:00:20</EndOffset>
             </Display>
           </LBanner>

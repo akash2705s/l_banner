@@ -8,7 +8,7 @@
     <!-- L-Banner CSS via jsDelivr CDN -->
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/gh/akash768145s/L2@1.0/lbanner-player.min.css"
+      href="https://cdn.jsdelivr.net/gh/akash768145s/L_Banner@1.0/dist/lbanner-player.min.css"
     />
   </head>
   <body>
@@ -25,57 +25,23 @@
       <div id="l-banner-host" aria-live="polite"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/gh/akash768145s/L2@1.0/lbanner-player.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/akash768145s/L_Banner@1.0/dist/lbanner-player.min.js"></script>
 
     <script>
-      // Canvas URL endpoint - generates different VAST each time
-      const CANVAS_URL = "https://your-canvas-server.com/vast"; // Replace with your Canvas URL
-
-      // Generate unique VAST URL with timestamp to ensure fresh VAST each time
-      function getDynamicVastUrl() {
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(7);
-        const separator = CANVAS_URL.includes("?") ? "&" : "?";
-        return `${CANVAS_URL}${separator}_t=${timestamp}&_r=${random}`;
-      }
-
-      let playerInstance = null;
+      const ENABLE_COOKIE_TRACKING = true;
+      const SHOW_BANNERS_ON_PAUSE = true;
 
       document.addEventListener("DOMContentLoaded", async () => {
-        const video = document.getElementById("video-element");
-
-        // Initialize player with dynamic VAST URL
-        async function initializePlayer() {
-          try {
-            const vastUrl = getDynamicVastUrl();
-            console.log("Fetching VAST from:", vastUrl);
-
-            playerInstance = await window.LBannerPlayer.init({
-              apiKey: "demo-api-key-1234",
-              vastUrl: vastUrl,
-            });
-          } catch (error) {
-            console.error("Failed to initialize L-Banner:", error);
-          }
+        try {
+          await window.LBannerPlayer.init({
+            apiKey: "your-api-key-here",
+            vastUrl: "./banners/left-bottom-image.xml",
+            enableCookieTracking: ENABLE_COOKIE_TRACKING,
+            showBannersOnPause: SHOW_BANNERS_ON_PAUSE,
+          });
+        } catch (error) {
+          console.error("Failed to initialize L-Banner:", error);
         }
-
-        // Initialize on load
-        await initializePlayer();
-
-        // Re-fetch VAST on each play event
-        video.addEventListener("play", async () => {
-          console.log("Video playing - fetching new VAST...");
-          try {
-            const vastUrl = getDynamicVastUrl();
-            // Re-initialize with new VAST URL
-            playerInstance = await window.LBannerPlayer.init({
-              apiKey: "demo-api-key-1234",
-              vastUrl: vastUrl,
-            });
-          } catch (error) {
-            console.error("Failed to refresh VAST:", error);
-          }
-        });
       });
     </script>
   </body>

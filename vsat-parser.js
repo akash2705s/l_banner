@@ -1,13 +1,27 @@
 /**
- * VSAT XML Parser
- * Parses VSAT XML format with L-Banner Extensions
+ * VSAT XML Parser Module
+ * 
+ * Parses VSAT (Video Ad Serving Template) XML format with L-Banner Extensions.
+ * Extracts banner configurations including:
+ * - Layout segments (Horizontal and Vertical)
+ * - Content elements (images, polls, buttons)
+ * - Display timing (start/end offsets)
+ * - Media metadata (video URLs, duration, tracking)
+ * - Button configurations with actions and tracking
+ * 
+ * The parser converts VSAT XML into an internal banner configuration format
+ * that can be consumed by the analytics and rendering modules.
  */
 
 const VSATParser = {
     /**
      * Parse VSAT XML string and extract L-Banner configuration
-     * @param {string} xmlText - Raw VSAT XML string
-     * @returns {Object|null} Parsed L-Banner configuration or null if not found
+     * 
+     * Main entry point for parsing. Finds L-Banner extension in VAST XML,
+     * extracts banner configuration, and merges with media details.
+     * 
+     * @param {string} xmlText - Raw VSAT XML string to parse
+     * @returns {Object|null} Parsed L-Banner configuration object or null if not found/invalid
      */
     parseVSAT(xmlText) {
         try {
@@ -48,8 +62,12 @@ const VSATParser = {
 
     /**
      * Parse LBanner element into internal banner format
-     * @param {Element} lbannerElement - LBanner XML element
-     * @returns {Object} Banner configuration object
+     * 
+     * Extracts horizontal/vertical segments, display timing, and builds
+     * complete banner configuration with metadata, layout, content, and behavior.
+     * 
+     * @param {Element} lbannerElement - LBanner XML element from VSAT
+     * @returns {Object} Complete banner configuration object with meta, configuration, timing
      */
     parseLBanner(lbannerElement) {
         const horizontal = lbannerElement.querySelector("Horizontal");
@@ -116,10 +134,14 @@ const VSATParser = {
     },
 
     /**
-     * Parse segment (Horizontal or Vertical)
-     * @param {Element} segmentEl - Horizontal or Vertical element
+     * Parse segment (Horizontal or Vertical) from XML
+     * 
+     * Extracts segment dimensions (width, height) and position (x, y).
+     * Determines position hint (left/right/top/bottom) based on coordinates.
+     * 
+     * @param {Element} segmentEl - Horizontal or Vertical XML element
      * @param {string} type - "horizontal" or "vertical"
-     * @returns {Object} Segment configuration
+     * @returns {Object} Segment configuration with id, dimensions, position, coordinates, type
      */
     parseSegment(segmentEl, type) {
         const width = parseInt(segmentEl.querySelector("Width")?.textContent?.trim() || "0", 10);
@@ -147,10 +169,16 @@ const VSATParser = {
     },
 
     /**
-     * Parse segment content (image, buttons, etc.)
-     * @param {Element} segmentEl - Segment element
-     * @param {string} segmentId - Segment ID
-     * @returns {Object} Element configuration
+     * Parse segment content (image, buttons, polls, etc.)
+     * 
+     * Extracts content elements from segment XML including:
+     * - Image URLs or poll configurations
+     * - Background colors
+     * - Button configurations
+     * 
+     * @param {Element} segmentEl - Segment XML element containing content
+     * @param {string} segmentId - Segment ID to associate with content
+     * @returns {Object} Element configuration with type, media, buttons, poll, backgroundColor
      */
     parseSegmentContent(segmentEl, segmentId) {
         const imageUrlEl = segmentEl.querySelector("ImageURL");
@@ -215,9 +243,12 @@ const VSATParser = {
     },
 
     /**
-     * Parse Poll element
+     * Parse Poll element from XML
+     * 
+     * Extracts poll question, heading, tagline, and option choices.
+     * 
      * @param {Element} pollEl - Poll XML element
-     * @returns {Object} Poll configuration
+     * @returns {Object} Poll configuration with heading, question, tagline, options array
      */
     parsePoll(pollEl) {
         const heading = pollEl.querySelector("Heading")?.textContent?.trim() || "";
@@ -242,11 +273,18 @@ const VSATParser = {
     },
 
     /**
-     * Parse Button element
+     * Parse Button element from XML
+     * 
+     * Extracts button configuration including:
+     * - Label text and role (primary/secondary)
+     * - Absolute position (x, y, width, height)
+     * - Action configuration (clickThrough, deepLink, customAction)
+     * - Tracking events (click, viewable)
+     * 
      * @param {Element} buttonEl - Button XML element
-     * @param {string} segmentId - Parent segment ID
-     * @param {number} index - Button index
-     * @returns {Object} Button configuration
+     * @param {string} segmentId - Parent segment ID for button ID generation
+     * @param {number} index - Button index for ID generation
+     * @returns {Object} Button configuration with id, label, role, position, action, tracking
      */
     parseButton(buttonEl, segmentId, index) {
         const buttonId = buttonEl.getAttribute("id") || `btn_${segmentId}_${index}`;
@@ -302,8 +340,16 @@ const VSATParser = {
 
     /**
      * Determine overall banner position from segments
-     * @param {Array} segments - Array of segment objects
-     * @returns {string} Position string
+     * 
+     * Analyzes segment positions to determine combined banner position:
+     * - left-bottom: left + bottom segments
+     * - right-bottom: right + bottom segments
+     * - left-top: left + top segments
+     * - right-top: right + top segments
+     * Defaults to "left-bottom" if no match.
+     * 
+     * @param {Array} segments - Array of segment objects with position property
+     * @returns {string} Combined position string (e.g., "left-bottom", "right-bottom")
      */
     determinePosition(segments) {
         const positions = segments.map((s) => s.position);
@@ -323,9 +369,15 @@ const VSATParser = {
     },
 
     /**
-     * Convert time string (HH:MM:SS or MM:SS) to seconds
-     * @param {string} timeStr - Time string
-     * @returns {number} Seconds
+     * Convert time string to seconds
+     * 
+     * Supports multiple formats:
+     * - HH:MM:SS (hours:minutes:seconds)
+     * - MM:SS (minutes:seconds)
+     * - Numeric string (parsed as float)
+     * 
+     * @param {string} timeStr - Time string in HH:MM:SS, MM:SS, or numeric format
+     * @returns {number} Time in seconds
      */
     timeToSeconds(timeStr) {
         if (!timeStr) return 0;
@@ -341,9 +393,16 @@ const VSATParser = {
     },
 
     /**
-     * Parse linear media metadata from the document
-     * @param {Document} xmlDoc
-     * @returns {Object|null}
+     * Parse linear media metadata from VAST document
+     * 
+     * Extracts video media information from Linear element:
+     * - Duration
+     * - Media file URLs and metadata
+     * - Click-through and deep link URLs
+     * - Tracking events
+     * 
+     * @param {Document} xmlDoc - Parsed VAST XML document
+     * @returns {Object|null} Media details object with duration, files, clickThrough, deepLink, tracking, or null
      */
     parseMediaDetails(xmlDoc) {
         if (!xmlDoc) return null;
@@ -373,8 +432,11 @@ const VSATParser = {
 
     /**
      * Parse MediaFile nodes into simplified objects
-     * @param {NodeList} mediaNodes
-     * @returns {Array<Object>}
+     * 
+     * Extracts media file information including URL, delivery method, type, dimensions, and bitrate.
+     * 
+     * @param {NodeList} mediaNodes - NodeList of MediaFile XML elements
+     * @returns {Array<Object>} Array of media file objects with url, delivery, type, width, height, bitrate
      */
     parseMediaFiles(mediaNodes) {
         if (!mediaNodes || mediaNodes.length === 0) return [];
@@ -396,8 +458,11 @@ const VSATParser = {
 
     /**
      * Parse TrackingEvents into a map of event -> url[]
-     * @param {Element|null} trackingEl
-     * @returns {Object}
+     * 
+     * Extracts tracking URLs grouped by event type (impression, click, viewable, etc.)
+     * 
+     * @param {Element|null} trackingEl - TrackingEvents XML element or null
+     * @returns {Object} Map of event names to arrays of tracking URLs
      */
     parseTrackingEvents(trackingEl) {
         const tracking = {};
@@ -414,9 +479,13 @@ const VSATParser = {
     },
 
     /**
-     * Fetch VSAT XML from URL
-     * @param {string} url - VSAT XML URL
-     * @returns {Promise<Object|null>} Parsed L-Banner configuration
+     * Fetch VSAT XML from URL and parse it
+     * 
+     * Convenience method that combines fetching and parsing.
+     * Fetches XML from URL, then calls parseVSAT on the result.
+     * 
+     * @param {string} url - VSAT XML URL to fetch
+     * @returns {Promise<Object|null>} Parsed L-Banner configuration or null if fetch/parse fails
      */
     async fetchAndParse(url) {
         try {
@@ -440,7 +509,10 @@ const VSATParser = {
     },
 };
 
-// Export for use in other files
+/**
+ * Export VSATParser globally for use in other modules
+ * Makes parser available on window object for main.js and other files
+ */
 if (typeof window !== "undefined") {
     window.VSATParser = VSATParser;
 }
