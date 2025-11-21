@@ -12,16 +12,11 @@
     />
   </head>
   <body>
-    <div
-      id="player-shell"
-      class="shaka-player-container"
-      data-shaka-player-container
-    >
+    <div id="player-shell" class="shaka-player-container">
       <div id="video-area" data-role="video-area">
         <video
           id="video-element"
           class="shaka-video"
-          data-shaka-player
           autoplay
           muted
           playsinline
@@ -33,15 +28,54 @@
     <script src="https://cdn.jsdelivr.net/gh/akash768145s/L2@1.0/lbanner-player.min.js"></script>
 
     <script>
+      // Canvas URL endpoint - generates different VAST each time
+      const CANVAS_URL = "https://your-canvas-server.com/vast"; // Replace with your Canvas URL
+
+      // Generate unique VAST URL with timestamp to ensure fresh VAST each time
+      function getDynamicVastUrl() {
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(7);
+        const separator = CANVAS_URL.includes("?") ? "&" : "?";
+        return `${CANVAS_URL}${separator}_t=${timestamp}&_r=${random}`;
+      }
+
+      let playerInstance = null;
+
       document.addEventListener("DOMContentLoaded", async () => {
-        try {
-          await window.LBannerPlayer.init({
-            apiKey: "demo-api-key-1234",
-            vastUrl: "./banners/left-bottom-image.xml",
-          });
-        } catch (error) {
-          console.error("Failed to initialize L-Banner:", error);
+        const video = document.getElementById("video-element");
+
+        // Initialize player with dynamic VAST URL
+        async function initializePlayer() {
+          try {
+            const vastUrl = getDynamicVastUrl();
+            console.log("Fetching VAST from:", vastUrl);
+
+            playerInstance = await window.LBannerPlayer.init({
+              apiKey: "demo-api-key-1234",
+              vastUrl: vastUrl,
+            });
+          } catch (error) {
+            console.error("Failed to initialize L-Banner:", error);
+          }
         }
+
+        // Initialize on load
+        await initializePlayer();
+
+        // Re-fetch VAST on each play event
+        video.addEventListener("play", async () => {
+          console.log("Video playing - fetching new VAST...");
+          try {
+            const vastUrl = getDynamicVastUrl();
+            // Re-initialize with new VAST URL
+            playerInstance = await window.LBannerPlayer.init({
+              apiKey: "demo-api-key-1234",
+              vastUrl: vastUrl,
+            });
+          } catch (error) {
+            console.error("Failed to refresh VAST:", error);
+          }
+        });
       });
     </script>
   </body>

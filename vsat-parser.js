@@ -264,9 +264,12 @@ const VSATParser = {
             height: parseInt(positionEl?.querySelector("Height")?.textContent?.trim() || "60", 10),
         };
 
-        const actionEl = buttonEl.querySelector("Action[type='clickthrough']");
+        // Parse action - match corner banner approach
+        const actionEl = buttonEl.querySelector("Action");
+        const actionType = actionEl?.getAttribute("type") || "clickthrough";
         const clickThrough = actionEl?.querySelector("ClickThrough")?.textContent?.trim() || "";
         const deepLink = actionEl?.querySelector("DeepLink")?.textContent?.trim() || "";
+        const customAction = actionEl?.querySelector("CustomAction")?.textContent?.trim() || "";
 
         const trackingEventsEl = buttonEl.querySelector("TrackingEvents");
         const tracking = {};
@@ -288,9 +291,10 @@ const VSATParser = {
             defaultFocus: defaultFocus,
             position: position,
             action: {
-                type: "clickthrough",
+                type: actionType,
                 clickThrough: clickThrough,
                 deepLink: deepLink,
+                customAction: customAction,
             },
             tracking: tracking,
         };

@@ -54,6 +54,7 @@
                   </Position>
                   <Action type="clickthrough">
                     <ClickThrough><![CDATA[https://example.com/upgrade]]></ClickThrough>
+                    <DeepLink><![CDATA[brandapp://open/upgrade]]></DeepLink>
                   </Action>
                   <TrackingEvents>
                     <Tracking event="click">
@@ -75,7 +76,23 @@
               <X>0</X>
               <Y>700</Y>
               <Buttons>
-                <!-- No buttons on horizontal segment -->
+                <Button id="btn-learn-more" role="primary">
+                  <Label>Learn More</Label>
+                  <Position>
+                    <X>1030</X>
+                    <Y>735</Y>
+                    <Width>200</Width>
+                    <Height>50</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough><![CDATA[https://example.com/learn-more]]></ClickThrough>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://track.example.com/learn-more-click]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
               </Buttons>
             </Horizontal>
             <!-- Display timing: 1s animate in, 8s visible, 1s animate out = 10s total -->

@@ -20,16 +20,81 @@
     <link rel="stylesheet" href="./dist/lbanner-player.min.css" />
   </head>
   <body>
+    <!-- Cookie Status Display Panel -->
     <div
-      id="player-shell"
-      class="shaka-player-container"
-      data-shaka-player-container
+      id="cookie-status-panel"
+      style="
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      "
     >
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        "
+      >
+        <strong style="color: #4caf50">Cookie Tracking Status</strong>
+        <button
+          id="refresh-cookie-status"
+          style="
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+          "
+        >
+          Refresh
+        </button>
+      </div>
+      <div id="cookie-status-content">
+        <div>
+          Status:
+          <span id="cookie-enabled-status" style="color: #ffc107"
+            >Loading...</span
+          >
+        </div>
+        <div style="margin-top: 8px">
+          Elements Tracked: <span id="cookie-element-count">0</span>
+        </div>
+        <div style="margin-top: 8px; max-height: 200px; overflow-y: auto">
+          <div style="font-size: 10px; color: #ccc">Cookie Data:</div>
+          <pre
+            id="cookie-data-display"
+            style="
+              margin-top: 5px;
+              font-size: 10px;
+              white-space: pre-wrap;
+              word-break: break-all;
+              color: #e0e0e0;
+            "
+          >
+{}</pre
+          >
+        </div>
+      </div>
+    </div>
+
+    <div id="player-shell" class="shaka-player-container">
       <div id="video-area" data-role="video-area">
         <video
           id="video-element"
           class="shaka-video"
-          data-shaka-player
           data-video-src="https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd"
           autoplay
           muted
@@ -40,17 +105,185 @@
     </div>
     <script src="./dist/lbanner-player.min.js"></script>
     <script>
+      // Cookie tracking configuration
+      // Set to true to enable cookie-based element tracking
+      // Set to false to disable cookie tracking
+      const ENABLE_COOKIE_TRACKING = true;
+
+      // Function to read cookie data directly
+      function readCookieData() {
+        try {
+          console.log(
+            "[Cookie Status] Reading cookies, document.cookie:",
+            document.cookie
+          );
+          const cookies = document.cookie ? document.cookie.split(";") : [];
+          console.log("[Cookie Status] Split cookies:", cookies);
+          const entry = cookies
+            .map((cookie) => cookie.trim())
+            .find((cookie) => cookie.startsWith("lbanner_elements="));
+
+          console.log("[Cookie Status] Found entry:", entry ? "YES" : "NO");
+
+          if (!entry) {
+            console.log("[Cookie Status] No lbanner_elements cookie found");
+            return {};
+          }
+
+          // Handle cookie value extraction properly (value may contain = signs)
+          const equalIndex = entry.indexOf("=");
+          const value = equalIndex >= 0 ? entry.substring(equalIndex + 1) : "";
+          if (!value) {
+            console.log("[Cookie Status] Cookie entry has no value");
+            return {};
+          }
+
+          console.log(
+            "[Cookie Status] Parsing cookie value (length:",
+            value.length + ")"
+          );
+          const decoded = decodeURIComponent(value);
+          console.log(
+            "[Cookie Status] Decoded value:",
+            decoded.substring(0, 200)
+          );
+          const parsed = JSON.parse(decoded);
+          console.log("[Cookie Status] Parsed cookie data:", parsed);
+          return parsed;
+        } catch (error) {
+          console.error("[Cookie Status] Error reading cookie:", error);
+          return {};
+        }
+      }
+
+      // Function to update cookie status display (exposed globally for analytics.js)
+      window.updateCookieStatusDisplay = function updateCookieStatusDisplay() {
+        const statusEl = document.getElementById("cookie-enabled-status");
+        const countEl = document.getElementById("cookie-element-count");
+        const dataEl = document.getElementById("cookie-data-display");
+
+        if (!statusEl || !countEl || !dataEl) {
+          console.warn("[Cookie Status] Display elements not found");
+          return;
+        }
+
+        if (ENABLE_COOKIE_TRACKING) {
+          statusEl.textContent = "ENABLED";
+          statusEl.style.color = "#4CAF50";
+
+          // Try to use LBannerAnalytics.checkCookieStatus if available, otherwise read directly
+          let cookieData = {};
+          try {
+            if (
+              window.LBannerAnalytics &&
+              typeof window.LBannerAnalytics.checkCookieStatus === "function"
+            ) {
+              console.log(
+                "[Cookie Status] Using LBannerAnalytics.checkCookieStatus"
+              );
+              cookieData = window.LBannerAnalytics.checkCookieStatus();
+            } else {
+              // Fallback: read cookie directly
+              console.log("[Cookie Status] Using direct cookie read");
+              cookieData = readCookieData();
+            }
+          } catch (error) {
+            console.warn(
+              "[Cookie Status] Error checking cookie status:",
+              error
+            );
+            cookieData = readCookieData(); // Fallback to direct read
+          }
+
+          console.log("[Cookie Status] Final cookieData:", cookieData);
+
+          const elementIds = Object.keys(cookieData);
+          console.log(
+            "[Cookie Status] Display update - elementIds:",
+            elementIds
+          );
+          countEl.textContent = elementIds.length;
+
+          if (elementIds.length > 0) {
+            const formatted = elementIds
+              .map((id) => {
+                const el = cookieData[id];
+                const lastShown = el.lastShown
+                  ? new Date(el.lastShown).toLocaleString()
+                  : "N/A";
+                const interactedAt = el.interactedAt
+                  ? `interactedAt: ${new Date(
+                      el.interactedAt
+                    ).toLocaleString()}`
+                  : "";
+                return `  "${id}": {
+    state: "${el.state || "notclicked"}",
+    lastShown: ${lastShown}${interactedAt ? ",\n    " + interactedAt : ""}
+  }`;
+              })
+              .join(",\n");
+            dataEl.textContent = `{\n${formatted}\n}`;
+            dataEl.style.color = "#E0E0E0";
+          } else {
+            // Check if LBannerAnalytics is initialized
+            if (window.LBannerAnalytics) {
+              dataEl.textContent = "{}";
+              dataEl.style.color = "#E0E0E0";
+            } else {
+              dataEl.textContent = "Waiting for initialization...";
+              dataEl.style.color = "#FFC107";
+            }
+          }
+        } else {
+          statusEl.textContent = "DISABLED";
+          statusEl.style.color = "#F44336";
+          countEl.textContent = "N/A";
+          dataEl.textContent = "Cookie tracking is disabled";
+          dataEl.style.color = "#E0E0E0";
+        }
+      };
+
       // Example initialization - only requires apiKey and vastUrl
       // The script will dynamically fetch and adapt to the VAST XML
       // Shaka Player and Bootstrap are loaded automatically by the bundle
       document.addEventListener("DOMContentLoaded", async () => {
+        // Initial display update
+        updateCookieStatusDisplay();
+
+        // Setup refresh button handler
+        const refreshBtn = document.getElementById("refresh-cookie-status");
+        if (refreshBtn) {
+          refreshBtn.addEventListener("click", () => {
+            updateCookieStatusDisplay();
+            console.log("[Cookie Status] Manually refreshed");
+          });
+        }
+
+        // Listen for cookie update events for dynamic updates
+        window.addEventListener("lbanner-cookie-updated", () => {
+          updateCookieStatusDisplay();
+          console.log("[Cookie Status] Updated via event");
+        });
+
         try {
           await window.LBannerPlayer.init({
             apiKey: "your-api-key-here",
             vastUrl: "./banners/left-bottom-image.xml", // Can be any VAST XML URL
+            enableCookieTracking: ENABLE_COOKIE_TRACKING, // Enable/disable cookie tracking
           });
+
+          // Update cookie status display after initialization
+          // Wait a bit longer to ensure banner is rendered and cookies are written
+          setTimeout(() => {
+            updateCookieStatusDisplay();
+            console.log("[Cookie Status] Updated after initialization");
+          }, 2000);
+
+          // Fallback polling every 1 second for cookie updates (in case events don't fire)
+          setInterval(updateCookieStatusDisplay, 1000);
         } catch (error) {
           console.error("Failed to initialize L-Banner:", error);
+          updateCookieStatusDisplay(); // Update display even on error
         }
       });
     </script>

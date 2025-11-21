@@ -10,6 +10,115 @@
     closeButton: null,
     currentBanner: null,
     controller: null,
+    enableCookieTracking: true, // Default: enabled
+  };
+
+  const ELEMENT_COOKIE = {
+    NAME: "lbanner_elements",
+    MAX_AGE_SECONDS: 60 * 60 * 24 * 30, // 30 days
+  };
+
+  const ElementCookieStore = {
+    read() {
+      if (typeof document === "undefined") return {};
+      try {
+        const cookies = document.cookie ? document.cookie.split(";") : [];
+        const entry = cookies
+          .map((cookie) => cookie.trim())
+          .find((cookie) => cookie.startsWith(`${ELEMENT_COOKIE.NAME}=`));
+        if (!entry) return {};
+        const value = entry.split("=")[1] ?? "";
+        if (!value) return {};
+        return JSON.parse(decodeURIComponent(value));
+      } catch (error) {
+        console.warn("[LBannerAnalytics] Failed to read element cookie", error);
+        return {};
+      }
+    },
+    write(data) {
+      if (typeof document === "undefined") return;
+      try {
+        const serialized = encodeURIComponent(JSON.stringify(data));
+        const cookieString = `${ELEMENT_COOKIE.NAME}=${serialized}; path=/; max-age=${ELEMENT_COOKIE.MAX_AGE_SECONDS}`;
+        document.cookie = cookieString;
+        console.log("[LBannerAnalytics] Updated cookie", ELEMENT_COOKIE.NAME, data);
+        // Verify cookie was written
+        const verify = document.cookie.includes(ELEMENT_COOKIE.NAME);
+        if (!verify) {
+          console.warn("[LBannerAnalytics] Cookie write may have failed - cookie not found in document.cookie");
+          console.warn("[LBannerAnalytics] Current document.cookie:", document.cookie);
+        } else {
+          // Dispatch custom event for dynamic cookie tracking updates
+          if (typeof window !== "undefined" && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent("lbanner-cookie-updated", { detail: data }));
+          }
+        }
+      } catch (error) {
+        console.error("[LBannerAnalytics] Failed to write element cookie", error);
+      }
+    },
+    recordShown(elements = []) {
+      if (!state.enableCookieTracking) {
+        console.log("[LBannerAnalytics] Cookie tracking disabled - skipping recordShown");
+        return;
+      }
+      if (!Array.isArray(elements) || elements.length === 0) {
+        console.log("[LBannerAnalytics] recordShown called with no elements");
+        return;
+      }
+      console.log("[LBannerAnalytics] recordShown called with", elements.length, "elements");
+      const cookieData = this.read();
+      let mutated = false;
+      const timestamp = Date.now();
+      elements.forEach((element) => {
+        const id = element?.id;
+        if (!id) {
+          console.warn("[LBannerAnalytics] Element missing ID:", element);
+          return;
+        }
+        const existing = cookieData[id] || {};
+        if (!existing.state) {
+          existing.state = "notclicked";
+        }
+        existing.lastShown = timestamp;
+        cookieData[id] = existing;
+        mutated = true;
+      });
+      if (mutated) {
+        console.log("[LBannerAnalytics] Writing cookie with", Object.keys(cookieData).length, "elements");
+        this.write(cookieData);
+      } else {
+        console.log("[LBannerAnalytics] No changes to cookie data");
+      }
+    },
+    markClicked(elementId) {
+      if (!state.enableCookieTracking) {
+        console.log("[LBannerAnalytics] Cookie tracking disabled - skipping markClicked");
+        return;
+      }
+      if (!elementId) {
+        console.warn("[LBannerAnalytics] markClicked called without elementId");
+        return;
+      }
+      console.log("[LBannerAnalytics] markClicked called for element:", elementId);
+      const cookieData = this.read();
+      console.log("[LBannerAnalytics] Current cookie data before update:", cookieData);
+      const existing = cookieData[elementId] || { state: "notclicked" };
+      const wasClicked = existing.state === "clicked";
+      const timestamp = Date.now();
+      existing.lastShown = timestamp;
+      if (!wasClicked) {
+        existing.state = "clicked";
+        existing.interactedAt = timestamp;
+        console.log("[LBannerAnalytics] Element state changed from 'notclicked' to 'clicked'");
+      } else {
+        console.log("[LBannerAnalytics] Element already clicked, updating lastShown timestamp");
+      }
+      cookieData[elementId] = existing;
+      console.log("[LBannerAnalytics] Updated cookie data:", cookieData);
+      this.write(cookieData);
+      console.log("[LBannerAnalytics] Cookie written successfully");
+    },
   };
 
   const POSITIONS = ["left", "right", "top", "bottom"];
@@ -28,6 +137,9 @@
     state.bannerHost = document.getElementById(config.bannerHostId);
     state.videoAreaSelector = config.videoAreaSelector;
     state.videoArea = document.querySelector(state.videoAreaSelector);
+    state.enableCookieTracking = config.enableCookieTracking;
+    
+    console.log(`[LBannerAnalytics] Cookie tracking: ${state.enableCookieTracking ? 'ENABLED' : 'DISABLED'}`);
 
     console.log("[LBannerAnalytics] Elements found:", {
       playerShell: !!state.playerShell,
@@ -51,6 +163,7 @@
       playerShellId,
       bannerHostId,
       videoAreaSelector,
+      enableCookieTracking,
     } = options;
     assert(typeof apiKey === "string", "apiKey is required");
     assert(videoRef && typeof videoRef === "object", "videoRef is required");
@@ -65,6 +178,7 @@
       playerShellId,
       bannerHostId,
       videoAreaSelector,
+      enableCookieTracking: enableCookieTracking !== undefined ? enableCookieTracking : true,
     };
   }
 
@@ -81,6 +195,7 @@
           "Content-Type": "application/json",
           "x-api-key": config.apiKey,
         },
+        credentials: state.enableCookieTracking ? "include" : "omit",
         signal: state.controller.signal,
       });
       assert(response.ok, `Ad server responded with ${response.status}`);
@@ -157,15 +272,23 @@
 
   function renderBanner(payload) {
     console.log("[LBannerAnalytics] renderBanner called", payload);
-    
+
     // Clean up existing banner immediately before rendering new one
     cleanupExisting(true);
-    
+
     const { configuration, meta } = payload ?? {};
     assert(configuration, "Payload missing configuration");
     const { layout, content, behavior } = configuration;
     assert(layout, "Missing layout");
     assert(content, "Missing content");
+
+    // Record elements in cookie if tracking is enabled
+    console.log("[LBannerAnalytics] About to record elements:", {
+      enableCookieTracking: state.enableCookieTracking,
+      elementCount: content.elements?.length || 0,
+      elements: content.elements
+    });
+    ElementCookieStore.recordShown(content.elements);
 
     console.log("[LBannerAnalytics] Rendering:", {
       segments: layout.segments.length,
@@ -303,6 +426,8 @@
     root.className = "lb-segment";
     root.dataset.segmentId = segment.id;
     root.style.backgroundColor = element.backgroundColor ?? "#111";
+    root.style.zIndex = "100"; // Ensure segment is above video
+    root.style.pointerEvents = "auto"; // Explicitly enable pointer events
     // Prevent all events from propagating to video
     root.addEventListener("click", (e) => e.stopPropagation());
     root.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -325,18 +450,18 @@
     }
 
     if (element.type === "poll" && element.poll) {
-      root.appendChild(buildPoll(element.poll));
+      root.appendChild(buildPoll(element));
     }
 
     // Support VSAT buttons array format
     if (Array.isArray(element.buttons) && element.buttons.length > 0) {
       element.buttons.forEach((buttonCfg) => {
-        const button = buildVSATButton(buttonCfg, segment);
+        const button = buildVSATButton(buttonCfg, segment, element.id);
         root.appendChild(button);
       });
     } else if (element.button?.show) {
       // Legacy single button format
-      root.appendChild(buildButton(element.button));
+      root.appendChild(buildButton(element.button, element.id));
     }
 
     return root;
@@ -486,7 +611,8 @@
     return video;
   }
 
-  function buildPoll(poll) {
+  function buildPoll(element) {
+    const poll = element.poll;
     const hasOptions = Array.isArray(poll.options) && poll.options.length > 0;
     const container = document.createElement("div");
     container.className = `lb-poll ${hasOptions ? "lb-poll--options" : "lb-poll--question"
@@ -531,6 +657,7 @@
           e.stopImmediatePropagation();
           button.classList.add("lb-poll__option--selected");
           button.textContent = "Thanks for voting!";
+          ElementCookieStore.markClicked(element.id);
         });
         optionsWrap.appendChild(button);
       });
@@ -552,13 +679,25 @@
     return container;
   }
 
-  function buildButton(cfg) {
+  function buildButton(cfg, elementId) {
     const button = document.createElement("button");
     button.className = "lb-button";
     button.textContent = cfg.text ?? "Learn more";
     button.style.background = cfg.color ?? "#f97316";
     button.style.color = "#0f172a";
-    button.onclick = () => {
+    button.type = "button"; // Ensure it's a button, not submit
+    button.style.cursor = "pointer"; // Ensure cursor shows it's clickable
+    button.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("[LBannerAnalytics] Legacy button clicked:", {
+        elementId: elementId,
+        text: cfg.text
+      });
+      if (elementId) {
+        console.log("[LBannerAnalytics] Marking element as clicked:", elementId);
+        ElementCookieStore.markClicked(elementId);
+      }
       if (cfg.action === "redirect" && cfg.url) {
         window.open(cfg.url, "_blank", "noopener");
       }
@@ -566,12 +705,12 @@
     return button;
   }
 
-  function buildVSATButton(cfg, segment) {
+  function buildVSATButton(cfg, segment, elementId) {
     const button = document.createElement("button");
     button.id = cfg.id || `btn_${segment.id}`;
     button.className = `lb-button lb-button--vsat lb-button--${cfg.role || "primary"}`;
     button.textContent = cfg.label || "Learn More";
-
+    button.type = "button"; // Ensure it's a button, not submit
     // Apply absolute positioning relative to the segment if provided
     if (cfg.position) {
       const segmentX = segment.x ?? 0;
@@ -599,13 +738,29 @@
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
+      
+      if (elementId) {
+        ElementCookieStore.markClicked(elementId);
+        // Trigger cookie status display update if function exists
+        if (typeof window.updateCookieStatusDisplay === 'function') {
+          setTimeout(() => {
+            window.updateCookieStatusDisplay();
+          }, 100);
+        }
+      }
 
-      // Track conversion
+      // Track conversion - match corner banner approach
       const bannerId = state.currentBanner?.meta?.id;
       if (window.LBannerTracking && bannerId) {
+        const actionDetail =
+          cfg.action?.clickThrough ||
+          cfg.action?.deepLink ||
+          cfg.action?.customAction ||
+          cfg.action?.type;
+
         window.LBannerTracking.trackConversion(bannerId, cfg.id, {
           label: cfg.label,
-          action: cfg.action?.clickThrough || cfg.action?.deepLink,
+          action: actionDetail,
           segmentId: segment.id,
         });
       }
@@ -615,18 +770,37 @@
         fireTracking(cfg.tracking.click);
       }
 
-      // Handle clickthrough
-      if (cfg.action?.clickThrough) {
-        window.open(cfg.action.clickThrough, "_blank", "noopener");
-      } else if (cfg.action?.deepLink) {
-        // Try deep link first, fallback to clickthrough
+      // Handle action based on type - match corner banner logic
+      const actionType = cfg.action?.type || "clickthrough";
+      if (actionType === "custom" && cfg.action?.customAction) {
+        const customEvent = new CustomEvent("LBannerCustomAction", {
+          detail: {
+            action: cfg.action.customAction,
+            buttonId: cfg.id,
+            label: cfg.label,
+            elementId: elementId,
+            segmentId: segment.id,
+          },
+        });
+        window.dispatchEvent(customEvent);
+        console.log("[LBannerAnalytics] Custom action triggered:", cfg.action.customAction);
+        return;
+      }
+
+      const deepLink = cfg.action?.deepLink;
+      const clickThrough = cfg.action?.clickThrough;
+
+      if (deepLink) {
         try {
-          window.location.href = cfg.action.deepLink;
+          window.location.href = deepLink;
+          return;
         } catch (err) {
-          if (cfg.action.clickThrough) {
-            window.open(cfg.action.clickThrough, "_blank", "noopener");
-          }
+          console.warn("[LBannerAnalytics] Deep link failed, falling back to clickthrough");
         }
+      }
+
+      if (clickThrough) {
+        window.open(clickThrough, "_blank", "noopener");
       }
     };
 
@@ -699,6 +873,40 @@
     state.controller = null;
   }
 
+  function checkCookieStatus() {
+    console.log("=== L-Banner Cookie Status ===");
+    console.log("Cookie tracking enabled:", state.enableCookieTracking);
+    
+    if (!state.enableCookieTracking) {
+      console.log("Cookie tracking is DISABLED");
+      console.log("=============================");
+      return {};
+    }
+    
+    console.log("All cookies:", document.cookie || "(empty)");
+    
+    const cookieData = ElementCookieStore.read();
+    console.log("Parsed cookie data:", cookieData);
+    console.log("Element count:", Object.keys(cookieData).length);
+    
+    // Test cookie write capability
+    try {
+      const testCookie = "lbanner_test=" + Date.now() + "; path=/; max-age=60";
+      document.cookie = testCookie;
+      const canWrite = document.cookie.includes("lbanner_test");
+      console.log("Cookie write test:", canWrite ? "✓ SUCCESS" : "✗ FAILED");
+      if (canWrite) {
+        // Clean up test cookie
+        document.cookie = "lbanner_test=; path=/; max-age=0";
+      }
+    } catch (error) {
+      console.error("Cookie write test error:", error);
+    }
+    
+    console.log("=============================");
+    return cookieData;
+  }
+
   window.LBannerAnalytics = {
     init,
     refresh: () => {
@@ -721,6 +929,7 @@
     show: showBanner,
     hide: hideBanner,
     getCurrentBanner: () => state.currentBanner,
+    checkCookieStatus,
     destroy,
   };
 })();

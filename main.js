@@ -5,6 +5,7 @@ let CONFIG = {
   VIDEO_URL: null,
   AD_ENDPOINT: null,
   CONTAINER_ID: "player-shell",
+  ENABLE_COOKIE_TRACKING: true, // Default: enabled. Set to false to disable cookie-based element tracking
 };
 
 // Store parsed VSAT banners (dynamically loaded from VAST URL)
@@ -70,6 +71,7 @@ async function fetchAndParseVAST(vastUrl) {
       headers: {
         Accept: "application/xml, text/xml, */*",
       },
+      credentials: CONFIG.ENABLE_COOKIE_TRACKING ? "include" : "omit",
     });
 
     if (!response.ok) {
@@ -253,9 +255,10 @@ function showBanner(bannerData) {
  * @param {string} [options.videoUrl] - Optional video URL override (falls back to DOM attributes)
  * @param {string} [options.adEndpoint] - Optional ad endpoint URL (for analytics)
  * @param {string} [options.container_id] - Optional container id for analytics
+ * @param {boolean} [options.enableCookieTracking] - Enable/disable cookie-based element tracking (default: true)
  */
 async function initLBanner(options) {
-  const { key, url, videoUrl, adEndpoint, container_id } = options;
+  const { key, url, videoUrl, adEndpoint, container_id, enableCookieTracking } = options;
 
   if (!key || !url) {
     throw new Error("[Main] initLBanner requires 'key' and 'url' parameters");
@@ -271,6 +274,9 @@ async function initLBanner(options) {
   CONFIG.VIDEO_URL = resolveInitialVideoSource(videoUrl);
   CONFIG.AD_ENDPOINT = adEndpoint || url; // Default to VAST URL if not provided
   CONFIG.CONTAINER_ID = container_id || CONFIG.CONTAINER_ID || "player-shell";
+  CONFIG.ENABLE_COOKIE_TRACKING = enableCookieTracking !== undefined ? enableCookieTracking : CONFIG.ENABLE_COOKIE_TRACKING;
+  
+  console.log(`[Main] Cookie tracking: ${CONFIG.ENABLE_COOKIE_TRACKING ? 'ENABLED' : 'DISABLED'}`);
   const resolvedContainerId = CONFIG.CONTAINER_ID;
   let resolvedVideoUrl = CONFIG.VIDEO_URL;
 
@@ -330,6 +336,7 @@ async function initLBanner(options) {
     videoAreaSelector: "#video-area",
     bannerHostId: "l-banner-host",
     adEndpoint: CONFIG.AD_ENDPOINT,
+    enableCookieTracking: CONFIG.ENABLE_COOKIE_TRACKING,
   });
   console.log("[Main] LBannerAnalytics initialized");
 
