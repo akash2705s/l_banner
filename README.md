@@ -81,9 +81,39 @@ LBannerPlayer.init({
   videoUrl: "https://example.com/video.mpd",
   
   // Optional - Container ID (defaults to "player-shell")
-  container_id: "player-shell"
+  container_id: "player-shell",
+
+  // Optional - Force banners to appear when playback is paused
+  // Set to true to surface the active L-Banner segments on pause, false to keep default timing-only behavior
+  showBannersOnPause: false,
 });
 ```
+
+## How to Call the Player
+
+You can initialize the L-Banner player from any JavaScript context as long as `dist/lbanner-player.min.js` is loaded on the page. Common entry points in this repo:
+
+1. **Inline script (see `index.html` lines 269-276)** – ideal for demos or simple embeds. It calls:
+   ```javascript
+   await window.LBannerPlayer.init({
+     apiKey: "your-api-key-here",
+     vastUrl: "./banners/left-bottom-image.xml",
+     enableCookieTracking: ENABLE_COOKIE_TRACKING,
+     showBannersOnPause: SHOW_BANNERS_ON_PAUSE,
+   });
+   ```
+
+2. **Standalone initializer (`init-example.js`)** – demonstrates calling `window.initLBanner` directly when bundling yourself:
+   ```javascript
+   window.initLBanner({
+     key: "your-api-key-here",
+     url: "https://your-server.com/vast.xml",
+   });
+   ```
+
+3. **Bundled loader (`build/lbanner-entry.js`)** – wraps dependency loading (Shaka, Bootstrap) and then forwards every option to `initLBanner`. Use this file as the entry when creating a CDN bundle so consumers only call `LBannerPlayer.init`.
+
+Pick whichever pattern fits your integration; all of them ultimately call `window.initLBanner`, so any new JS file can do the same once the bundle is on the page.
 
 **Note:** The player dynamically adapts to whatever VAST XML configuration is provided. Video URL, banner timing, positioning, content, and buttons are all extracted from the VAST XML automatically.
 

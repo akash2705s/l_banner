@@ -109,6 +109,7 @@
       // Set to true to enable cookie-based element tracking
       // Set to false to disable cookie tracking
       const ENABLE_COOKIE_TRACKING = true;
+      const SHOW_BANNERS_ON_PAUSE = true;
 
       // Function to read cookie data directly
       function readCookieData() {
@@ -270,6 +271,7 @@
             apiKey: "your-api-key-here",
             vastUrl: "./banners/left-bottom-image.xml", // Can be any VAST XML URL
             enableCookieTracking: ENABLE_COOKIE_TRACKING, // Enable/disable cookie tracking
+            showBannersOnPause: SHOW_BANNERS_ON_PAUSE,
           });
 
           // Update cookie status display after initialization

@@ -6,6 +6,7 @@ let CONFIG = {
   AD_ENDPOINT: null,
   CONTAINER_ID: "player-shell",
   ENABLE_COOKIE_TRACKING: true, // Default: enabled. Set to false to disable cookie-based element tracking
+  SHOW_BANNERS_ON_PAUSE: false,
 };
 
 // Store parsed VSAT banners (dynamically loaded from VAST URL)
@@ -186,51 +187,85 @@ async function initShaka(videoUrl) {
  * Dynamically adapts to all banners loaded from VAST
  * @param {HTMLVideoElement} video - Video element
  */
+function findBannerForTime(timeInSeconds) {
+  for (const [key, banner] of Object.entries(parsedBanners)) {
+    const startOffset = banner?.configuration?.timing?.startOffset;
+    const endOffset = banner?.configuration?.timing?.endOffset;
+
+    if (
+      startOffset !== null &&
+      startOffset !== undefined &&
+      endOffset !== null &&
+      endOffset !== undefined &&
+      timeInSeconds >= startOffset &&
+      timeInSeconds < endOffset
+    ) {
+      return { key, banner };
+    }
+  }
+
+  return { key: null, banner: null };
+}
+
 function setupBannerTiming(video) {
   let currentBannerKey = null;
   let lastCheckTime = -1;
+  let forcedPauseBannerActive = false;
+  let lastVisibleBanner = null;
+
+  function updateBannerTarget(targetKey, targetBanner) {
+    if (targetKey === currentBannerKey) return;
+
+    if (targetKey !== null && targetBanner) {
+      showBanner(targetBanner);
+      lastVisibleBanner = targetBanner;
+    } else if (currentBannerKey !== null) {
+      window.LBannerAnalytics.hide();
+    }
+
+    currentBannerKey = targetKey;
+  }
+
+  function evaluateBannerForCurrentTime(force = false) {
+    const currentTime = video.currentTime;
+    if (!force && Math.abs(currentTime - lastCheckTime) < 0.1) return;
+
+    lastCheckTime = currentTime;
+    const { key, banner } = findBannerForTime(currentTime);
+    updateBannerTarget(key, banner);
+  }
 
   video.addEventListener("timeupdate", () => {
-    const currentTime = video.currentTime;
-
-    // Throttle checks to every 0.1s for performance
-    if (Math.abs(currentTime - lastCheckTime) < 0.1) return;
-    lastCheckTime = currentTime;
-
-    // Find which banner should be shown at current time
-    // Priority: first banner that matches timing
-    let targetBannerKey = null;
-    let targetBanner = null;
-
-    for (const [key, banner] of Object.entries(parsedBanners)) {
-      const startOffset = banner?.configuration?.timing?.startOffset;
-      const endOffset = banner?.configuration?.timing?.endOffset;
-
-      // Check if timing is defined (startOffset can be 0, so check !== null/undefined)
-      if (startOffset !== null && startOffset !== undefined &&
-        endOffset !== null && endOffset !== undefined) {
-        // Check if current time is in this banner's range
-        if (currentTime >= startOffset && currentTime < endOffset) {
-          targetBannerKey = key;
-          targetBanner = banner;
-          break; // Use first matching banner
-        }
-      }
-    }
-
-    // Handle banner changes
-    if (targetBannerKey !== currentBannerKey) {
-      // Show new banner if there is one (will automatically cleanup old banner immediately)
-      if (targetBannerKey !== null && targetBanner) {
-        showBanner(targetBanner);
-      } else if (currentBannerKey !== null) {
-        // Only explicitly hide if transitioning to no banner (not banner-to-banner)
-        window.LBannerAnalytics.hide();
-      }
-
-      currentBannerKey = targetBannerKey;
-    }
+    evaluateBannerForCurrentTime();
   });
+
+  if (CONFIG.SHOW_BANNERS_ON_PAUSE) {
+    video.addEventListener("pause", () => {
+      evaluateBannerForCurrentTime(true);
+
+       if (currentBannerKey === null) {
+         const fallbackBanner = lastVisibleBanner || getBannerData();
+         if (fallbackBanner) {
+           forcedPauseBannerActive = true;
+           lastVisibleBanner = fallbackBanner;
+           window.LBannerAnalytics.setBanner(fallbackBanner);
+           window.LBannerAnalytics.show();
+         }
+       }
+    });
+
+    video.addEventListener("play", () => {
+      // Force re-evaluation so we hide the pause banner if needed.
+      evaluateBannerForCurrentTime(true);
+
+      if (forcedPauseBannerActive) {
+        if (currentBannerKey === null) {
+          window.LBannerAnalytics.hide();
+        }
+        forcedPauseBannerActive = false;
+      }
+    });
+  }
 }
 
 /**
@@ -258,7 +293,15 @@ function showBanner(bannerData) {
  * @param {boolean} [options.enableCookieTracking] - Enable/disable cookie-based element tracking (default: true)
  */
 async function initLBanner(options) {
-  const { key, url, videoUrl, adEndpoint, container_id, enableCookieTracking } = options;
+  const {
+    key,
+    url,
+    videoUrl,
+    adEndpoint,
+    container_id,
+    enableCookieTracking,
+    showBannersOnPause,
+  } = options;
 
   if (!key || !url) {
     throw new Error("[Main] initLBanner requires 'key' and 'url' parameters");
@@ -274,7 +317,10 @@ async function initLBanner(options) {
   CONFIG.VIDEO_URL = resolveInitialVideoSource(videoUrl);
   CONFIG.AD_ENDPOINT = adEndpoint || url; // Default to VAST URL if not provided
   CONFIG.CONTAINER_ID = container_id || CONFIG.CONTAINER_ID || "player-shell";
-  CONFIG.ENABLE_COOKIE_TRACKING = enableCookieTracking !== undefined ? enableCookieTracking : CONFIG.ENABLE_COOKIE_TRACKING;
+  CONFIG.ENABLE_COOKIE_TRACKING =
+    enableCookieTracking !== undefined ? enableCookieTracking : CONFIG.ENABLE_COOKIE_TRACKING;
+  CONFIG.SHOW_BANNERS_ON_PAUSE =
+    showBannersOnPause !== undefined ? showBannersOnPause : CONFIG.SHOW_BANNERS_ON_PAUSE;
   
   console.log(`[Main] Cookie tracking: ${CONFIG.ENABLE_COOKIE_TRACKING ? 'ENABLED' : 'DISABLED'}`);
   const resolvedContainerId = CONFIG.CONTAINER_ID;
