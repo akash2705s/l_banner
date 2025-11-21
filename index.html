@@ -4,91 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shaka Player with L-Banner</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-      crossorigin="anonymous"
-    />
     <link rel="stylesheet" href="./dist/lbanner-player.min.css" />
   </head>
   <body>
-    <!-- Cookie Status Display Panel -->
-    <div
-      id="cookie-status-panel"
-      style="
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 15px;
-        border-radius: 8px;
-        font-family: monospace;
-        font-size: 12px;
-        z-index: 10000;
-        max-width: 400px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-      "
-    >
-      <div
-        style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 10px;
-        "
-      >
-        <strong style="color: #4caf50">Cookie Tracking Status</strong>
-        <button
-          id="refresh-cookie-status"
-          style="
-            background: #2196f3;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-          "
-        >
-          Refresh
-        </button>
-      </div>
-      <div id="cookie-status-content">
-        <div>
-          Status:
-          <span id="cookie-enabled-status" style="color: #ffc107"
-            >Initializing...</span
-          >
-        </div>
-        <div style="margin-top: 8px">
-          Banners Tracked: <span id="cookie-element-count">0</span>
-        </div>
-        <div style="margin-top: 8px; max-height: 200px; overflow-y: auto">
-          <div style="font-size: 10px; color: #ccc">Cookie Data:</div>
-          <pre
-            id="cookie-data-display"
-            style="
-              margin-top: 5px;
-              font-size: 10px;
-              white-space: pre-wrap;
-              word-break: break-all;
-              color: #e0e0e0;
-            "
-          >
-{}</pre
-          >
-        </div>
-      </div>
-    </div>
-
     <div id="player-shell" class="shaka-player-container">
       <div id="video-area" data-role="video-area">
         <video
@@ -103,27 +21,23 @@
       <div id="l-banner-host" aria-live="polite"></div>
     </div>
 
-    <script>
-      // Analytics Configuration
-      window.ENABLE_ANALYTICS = true; // Set to false to disable analytics entirely
-      window.LBannerAnalyticsConfig = {
-        showStatusPanel: true, // Set to false to hide the status panel
-      };
-
-      // Player Configuration
-      const ENABLE_COOKIE_TRACKING = true;
-      const SHOW_BANNERS_ON_PAUSE = true;
-    </script>
-
     <script src="./dist/lbanner-player.min.js"></script>
     <script>
+      // Analytics Configuration - MUST be set before initialization
+      // IMPORTANT: ENABLE_ANALYTICS must ALWAYS be true for banners to display
+      window.ENABLE_ANALYTICS = true; // MUST ALWAYS BE TRUE - Required for banners to work
+      window.LBannerAnalyticsConfig = {
+        showStatusPanel: true, // Set to true/false to show/hide the status panel
+      };
+
+      // Initialize L-Banner Player
       document.addEventListener("DOMContentLoaded", async () => {
         try {
           await window.LBannerPlayer.init({
             apiKey: "your-api-key-here",
             vastUrl: "./banners/left-bottom-image.xml",
-            enableCookieTracking: ENABLE_COOKIE_TRACKING,
-            showBannersOnPause: SHOW_BANNERS_ON_PAUSE,
+            enableCookieTracking: true, // Set to true/false to enable/disable cookie tracking
+            showBannersOnPause: true, // Set to true/false to show/hide banners on pause
           });
         } catch (error) {
           console.error("Failed to initialize L-Banner:", error);

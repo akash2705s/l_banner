@@ -14,6 +14,39 @@
  */
 (function () {
   /**
+   * Immediately hide status panel if showStatusPanel is false
+   * This runs before any other code to ensure panel is hidden as early as possible
+   */
+  if (typeof document !== 'undefined') {
+    const hidePanelIfDisabled = () => {
+      const analyticsConfig = window.LBannerAnalyticsConfig || {};
+      if (analyticsConfig.showStatusPanel === false) {
+        const panelEl = document.getElementById("cookie-status-panel");
+        if (panelEl) {
+          panelEl.style.display = "none";
+          console.log('[LBannerAnalytics] Status panel hidden (showStatusPanel=false)');
+        }
+      }
+    };
+    
+    // Try immediately
+    hidePanelIfDisabled();
+    
+    // Try when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', hidePanelIfDisabled);
+    } else {
+      hidePanelIfDisabled();
+    }
+    
+    // Also try after delays to catch late DOM updates
+    setTimeout(hidePanelIfDisabled, 50);
+    setTimeout(hidePanelIfDisabled, 100);
+    setTimeout(hidePanelIfDisabled, 500);
+    setTimeout(hidePanelIfDisabled, 1000);
+  }
+  
+  /**
    * Check if analytics is enabled via global flag
    * Set window.ENABLE_ANALYTICS = false before loading to completely disable analytics
    */
@@ -21,6 +54,32 @@
 
   if (!ANALYTICS_ENABLED) {
     console.log('[LBannerAnalytics] Analytics disabled via ENABLE_ANALYTICS flag');
+    
+    // Hide status panel if it exists and showStatusPanel is false
+    if (typeof document !== 'undefined') {
+      const analyticsConfig = window.LBannerAnalyticsConfig || {};
+      if (analyticsConfig.showStatusPanel === false) {
+        // Use setTimeout to ensure DOM is ready
+        const hidePanel = () => {
+          const panelEl = document.getElementById("cookie-status-panel");
+          if (panelEl) {
+            panelEl.style.display = "none";
+            console.log('[LBannerAnalytics] Status panel hidden (analytics disabled + showStatusPanel=false)');
+          }
+        };
+        
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', hidePanel);
+        } else {
+          hidePanel();
+        }
+        
+        // Also try after a short delay to catch late DOM updates
+        setTimeout(hidePanel, 100);
+        setTimeout(hidePanel, 500);
+      }
+    }
+    
     // Provide minimal stub API to prevent errors
     window.LBannerAnalytics = {
       init: () => console.warn('[LBannerAnalytics] Analytics is disabled'),
@@ -1249,6 +1308,11 @@
     const analyticsConfig = window.LBannerAnalyticsConfig || {};
     if (analyticsConfig.showStatusPanel === false) {
       console.log("[LBannerAnalytics] Status panel disabled via config");
+      // Hide the panel element if it exists
+      const panelEl = document.getElementById("cookie-status-panel");
+      if (panelEl) {
+        panelEl.style.display = "none";
+      }
       return; // Status panel disabled
     }
 
@@ -1328,6 +1392,11 @@
     const analyticsConfig = window.LBannerAnalyticsConfig || {};
     if (analyticsConfig.showStatusPanel === false) {
       console.log("[LBannerAnalytics] Status panel disabled via config");
+      // Hide the panel element if it exists
+      const panelEl = document.getElementById("cookie-status-panel");
+      if (panelEl) {
+        panelEl.style.display = "none";
+      }
       return; // Status panel disabled
     }
 
@@ -1372,15 +1441,29 @@
   /**
    * Force immediate status panel update
    * Helper function to ensure status panel updates even if DOM isn't ready
+   * Also hides panel if showStatusPanel is false
    */
   function forceStatusUpdate() {
-    if (typeof document !== 'undefined' && document.getElementById('cookie-enabled-status')) {
-      console.log("[LBannerAnalytics] Force updating status panel");
-      updateCookieStatusDisplay();
+    if (typeof document !== 'undefined') {
+      const analyticsConfig = window.LBannerAnalyticsConfig || {};
+      if (analyticsConfig.showStatusPanel === false) {
+        // Hide the panel element if it exists
+        const panelEl = document.getElementById("cookie-status-panel");
+        if (panelEl) {
+          panelEl.style.display = "none";
+        }
+        return;
+      }
+      
+      if (document.getElementById('cookie-enabled-status')) {
+        console.log("[LBannerAnalytics] Force updating status panel");
+        updateCookieStatusDisplay();
+      }
     }
   }
 
   // Try to update status panel immediately if DOM is ready
+  // Also check if panel should be hidden
   if (typeof document !== 'undefined') {
     // Try immediately
     forceStatusUpdate();
