@@ -124,7 +124,8 @@ async function fetchAndParseVAST(vastUrl) {
 
     adElements.forEach((adEl, index) => {
       // Extract Ad ID if available
-      const adId = adEl.getAttribute("id") ||
+      const adId =
+        adEl.getAttribute("id") ||
         adEl.querySelector("AdSystem")?.textContent?.trim() ||
         `ad_${index}`;
 
@@ -175,6 +176,77 @@ function getBannerData(bannerKey = null) {
   }
   // Return first available banner
   return Object.values(parsedBanners)[0] || null;
+}
+
+/**
+ * Prefetch all banner segment images for instant display
+ * 
+ * Preloads all image URLs from banner segments to ensure they're cached
+ * and ready for immediate display when banners are shown.
+ * 
+ * @param {Object} banners - Object containing parsed banner configurations
+ */
+function prefetchBannerImages(banners) {
+  if (!banners || typeof banners !== "object") {
+    console.warn("[Main] No banners provided for prefetching");
+    return;
+  }
+
+  const imageUrls = new Set();
+
+  // Collect all image URLs from all banners
+  Object.values(banners).forEach((banner) => {
+    if (!banner?.configuration?.content?.elements) return;
+
+    banner.configuration.content.elements.forEach((element) => {
+      // Get image URL from media
+      if (element.type === "image" && element.media?.url) {
+        imageUrls.add(element.media.url);
+      }
+      // Also check for video URLs (they might be used as media)
+      if (element.type === "video" && element.media?.url) {
+        imageUrls.add(element.media.url);
+      }
+    });
+  });
+
+  if (imageUrls.size === 0) {
+    console.log("[Main] No images found to prefetch");
+    return;
+  }
+
+  console.log(
+    `[Main] Prefetching ${imageUrls.size} banner image(s)...`
+  );
+
+  // Prefetch each image
+  imageUrls.forEach((url) => {
+    if (!url || url.trim() === "") return;
+
+    // Use link preload for better performance
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = url;
+    link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+
+    // Also preload using Image object for immediate cache
+    const img = new Image();
+    img.src = url;
+    img.onload = () => {
+      console.log(`[Main] ✓ Prefetched image: ${url.substring(0, 50)}...`);
+    };
+    img.onerror = () => {
+      console.warn(
+        `[Main] ✗ Failed to prefetch image: ${url.substring(0, 50)}...`
+      );
+    };
+  });
+
+  console.log(
+    `[Main] Image prefetching initiated for ${imageUrls.size} image(s)`
+  );
 }
 
 /**
@@ -246,107 +318,181 @@ function findBannerForTime(timeInSeconds) {
 /**
  * Setup time-based banner display using VSAT Display timing
  * 
- * Dynamically adapts to all banners loaded from VAST XML.
- * Listens to video timeupdate events and shows/hides banners based on timing configuration.
- * Also handles pause/play banner display if SHOW_BANNERS_ON_PAUSE is enabled.
+ * FIXED VERSION:
+ * - Completely blocks banner display during seeking/scrubbing (no flash)
+ * - Always shows a banner on EVERY pause (time-based or fallback)
+ * - On play, restores correct time-based banner or hides if out of range
  * 
  * @param {HTMLVideoElement} video - Video element to monitor for time updates
  */
 function setupBannerTiming(video) {
   let currentBannerKey = null;
-  let lastCheckTime = -1;
-  let forcedPauseBannerActive = false;
-  let lastVisibleBanner = null;
+  let isPaused = false;
+  let isSeeking = false;
+  let seekCooldown = null;
+  let pauseBannerActive = false; // Track if we're showing a pause banner
 
-    /**
-     * Update which banner is currently displayed
-     * 
-     * Shows new banner if targetKey changes, hides current banner if target becomes null.
-     * Tracks last visible banner for pause fallback logic.
-     * 
-     * @param {string|null} targetKey - Banner key to show, or null to hide
-     * @param {Object|null} targetBanner - Banner data object to display
-     */
-    function updateBannerTarget(targetKey, targetBanner) {
-    if (targetKey === currentBannerKey) return;
-
-    if (targetKey !== null && targetBanner) {
-      showBanner(targetBanner);
-      // Always update lastVisibleBanner when showing a banner
-      lastVisibleBanner = targetBanner;
-    } else if (currentBannerKey !== null && currentBannerKey !== '_pause_banner') {
-      // Hide banner only if it's not a pause banner
-      callAnalytics('hide');
-    }
-
-    // Update currentBannerKey (pause banner sets it separately)
-    if (targetKey !== '_pause_banner') {
-      currentBannerKey = targetKey;
-    }
+  /**
+   * Direct banner operations - bypass all state checks
+   */
+  function forceShowBanner(bannerData, source = "direct") {
+    if (!bannerData) return;
+    console.log(`[Main] Force showing banner (${source})`);
+    // Directly call analytics - bypass all checks
+    callAnalytics("setBanner", bannerData);
+    callAnalytics("show");
   }
 
-    /**
-     * Evaluate which banner should be shown at current video time
-     * 
-     * Checks video currentTime and finds matching banner based on timing configuration.
-     * Only updates if time has changed significantly (0.1s threshold) unless forced.
-     * 
-     * @param {boolean} [force=false] - Force evaluation even if time hasn't changed
-     */
-    function evaluateBannerForCurrentTime(force = false) {
-    const currentTime = video.currentTime;
-    if (!force && Math.abs(currentTime - lastCheckTime) < 0.1) return;
-
-    lastCheckTime = currentTime;
-    const { key, banner } = findBannerForTime(currentTime);
-    updateBannerTarget(key, banner);
+  function forceHideBanner() {
+    console.log("[Main] Force hiding banner");
+    callAnalytics("hide");
   }
 
-  video.addEventListener("timeupdate", () => {
-    evaluateBannerForCurrentTime();
+  /**
+   * Helper to find banner (if any) for a given time
+   */
+  function getBannerForTime(time) {
+    const { key, banner } = findBannerForTime(time);
+    if (banner) return { key, banner };
+    return null;
+  }
+
+  /**
+   * SEEK HANDLING - Completely block ALL banner operations during seeking
+   */
+  let seekStartTime = null;
+  video.addEventListener("seeking", () => {
+    console.log("[Main] SEEKING START - blocking all banner operations");
+    isSeeking = true;
+    seekStartTime = Date.now();
+
+    // Immediately hide banner and block all future operations
+    if (currentBannerKey !== null) {
+      forceHideBanner();
+      currentBannerKey = null;
+    }
+
+    // Clear any pending cooldowns
+    if (seekCooldown) {
+      clearTimeout(seekCooldown);
+      seekCooldown = null;
+    }
   });
 
+  video.addEventListener("seeked", () => {
+    console.log("[Main] SEEKED - waiting for cooldown");
+    if (seekCooldown) clearTimeout(seekCooldown);
+
+    // Longer cooldown to ensure slider is completely settled
+    seekCooldown = setTimeout(() => {
+      const seekDuration = Date.now() - (seekStartTime || Date.now());
+      console.log(`[Main] Seek cooldown complete (${seekDuration}ms) - re-evaluating`);
+      isSeeking = false;
+      seekStartTime = null;
+
+      // Only re-evaluate if playing (not paused)
+      if (!isPaused) {
+        const t = video.currentTime;
+        const res = getBannerForTime(t);
+        if (res) {
+          currentBannerKey = res.key;
+          forceShowBanner(res.banner, "seek-complete");
+        } else {
+          currentBannerKey = null;
+        }
+      }
+    }, 600); // Increased to 600ms to prevent any flash
+  });
+
+  /**
+   * TIMEUPDATE HANDLING - Only when playing and NOT seeking
+   */
+  video.addEventListener("timeupdate", () => {
+    // Completely ignore if paused, seeking, or pause banner is active
+    if (isPaused || isSeeking || pauseBannerActive) {
+      return;
+    }
+
+    const t = video.currentTime;
+    const res = getBannerForTime(t);
+
+    if (!res) {
+      // Outside timing range - hide if currently showing
+      if (currentBannerKey !== null) {
+        forceHideBanner();
+        currentBannerKey = null;
+      }
+      return;
+    }
+
+    // Within timing range - show if different banner
+    if (res.key !== currentBannerKey) {
+      currentBannerKey = res.key;
+      forceShowBanner(res.banner, "timeupdate");
+    }
+  });
+
+  /**
+   * PAUSE HANDLING - Always show banner, bypass all checks
+   */
   if (CONFIG.SHOW_BANNERS_ON_PAUSE) {
     video.addEventListener("pause", () => {
-      // First, evaluate what banner should be shown at current time
-      const currentTime = video.currentTime;
-      const { key: timeBasedKey, banner: timeBasedBanner } = findBannerForTime(currentTime);
-      
-      // If there's a time-based banner, show it and update tracking
-      if (timeBasedKey !== null && timeBasedBanner) {
-        updateBannerTarget(timeBasedKey, timeBasedBanner);
-        lastVisibleBanner = timeBasedBanner;
+      console.log("[Main] PAUSE - forcing banner display (bypassing all checks)");
+      isPaused = true;
+      pauseBannerActive = true; // Mark that we're showing pause banner
+
+      const t = video.currentTime;
+      let bannerToShow = null;
+
+      // Try time-based banner first
+      const timeBanner = getBannerForTime(t);
+      if (timeBanner) {
+        bannerToShow = timeBanner.banner;
+        currentBannerKey = timeBanner.key;
       } else {
-        // No time-based banner, show fallback banner
-        const fallbackBanner = lastVisibleBanner || getBannerData();
-        if (fallbackBanner) {
-          forcedPauseBannerActive = true;
-          lastVisibleBanner = fallbackBanner;
-          callAnalytics('setBanner', fallbackBanner);
-          callAnalytics('show');
-          // Mark that we're showing a pause banner
-          currentBannerKey = '_pause_banner';
+        // Fallback to any available banner
+        const fallback = getBannerData();
+        if (fallback) {
+          bannerToShow = fallback;
+          const fallbackKey = Object.keys(parsedBanners).find(
+            (k) => parsedBanners[k] === fallback
+          );
+          currentBannerKey = fallbackKey || "fallback";
         }
+      }
+
+      // ALWAYS show banner on pause - direct call, no state checks
+      if (bannerToShow) {
+        forceShowBanner(bannerToShow, "pause-direct");
+      } else {
+        console.warn("[Main] No banner available for pause");
       }
     });
 
+    /**
+     * PLAY HANDLING - Restore time-based state
+     */
     video.addEventListener("play", () => {
-      // Clear pause banner flag
-      const wasPauseBanner = forcedPauseBannerActive || currentBannerKey === '_pause_banner';
-      forcedPauseBannerActive = false;
-      
-      // Reset currentBannerKey if it was a pause banner
-      if (currentBannerKey === '_pause_banner') {
-        currentBannerKey = null;
-      }
-      
-      // Force re-evaluation to show correct banner for current time
-      evaluateBannerForCurrentTime(true);
-      
-      // If no banner should be shown and we had a pause banner, hide it
-      if (currentBannerKey === null && wasPauseBanner) {
-        callAnalytics('hide');
-      }
+      console.log("[Main] PLAY - restoring time-based banner");
+      isPaused = false;
+      pauseBannerActive = false; // Clear pause banner flag
+
+      // Wait a tiny bit to ensure video has resumed
+      setTimeout(() => {
+        if (!isPaused && !isSeeking) {
+          const t = video.currentTime;
+          const res = getBannerForTime(t);
+
+          if (res) {
+            currentBannerKey = res.key;
+            forceShowBanner(res.banner, "play-resume");
+          } else {
+            // Outside timing range - hide banner
+            forceHideBanner();
+            currentBannerKey = null;
+          }
+        }
+      }, 50);
     });
   }
 }
@@ -362,7 +508,7 @@ function setupBannerTiming(video) {
  * @returns {any|null} Return value from analytics method or null if unavailable
  */
 function callAnalytics(method, ...args) {
-  if (window.LBannerAnalytics && typeof window.LBannerAnalytics[method] === 'function') {
+  if (window.LBannerAnalytics && typeof window.LBannerAnalytics[method] === "function") {
     return window.LBannerAnalytics[method](...args);
   }
   return null;
@@ -381,8 +527,8 @@ function showBanner(bannerData) {
     return;
   }
   console.log("[Main] Showing banner:", bannerData.meta?.id);
-  callAnalytics('setBanner', bannerData);
-  callAnalytics('show');
+  callAnalytics("setBanner", bannerData);
+  callAnalytics("show");
 }
 
 /**
@@ -414,7 +560,7 @@ async function initLBanner(options) {
     container_id,
     enableCookieTracking,
     showBannersOnPause,
-  } = options;
+  } = options || {};
 
   if (!key || !url) {
     throw new Error("[Main] initLBanner requires 'key' and 'url' parameters");
@@ -431,16 +577,23 @@ async function initLBanner(options) {
   CONFIG.AD_ENDPOINT = adEndpoint || url; // Default to VAST URL if not provided
   CONFIG.CONTAINER_ID = container_id || CONFIG.CONTAINER_ID || "player-shell";
   CONFIG.ENABLE_COOKIE_TRACKING =
-    enableCookieTracking !== undefined ? enableCookieTracking : CONFIG.ENABLE_COOKIE_TRACKING;
+    enableCookieTracking !== undefined
+      ? enableCookieTracking
+      : CONFIG.ENABLE_COOKIE_TRACKING;
   CONFIG.SHOW_BANNERS_ON_PAUSE =
-    showBannersOnPause !== undefined ? showBannersOnPause : CONFIG.SHOW_BANNERS_ON_PAUSE;
-  
-  console.log(`[Main] Cookie tracking: ${CONFIG.ENABLE_COOKIE_TRACKING ? 'ENABLED' : 'DISABLED'}`);
+    showBannersOnPause !== undefined
+      ? showBannersOnPause
+      : CONFIG.SHOW_BANNERS_ON_PAUSE;
+
+  console.log(
+    `[Main] Cookie tracking: ${CONFIG.ENABLE_COOKIE_TRACKING ? "ENABLED" : "DISABLED"
+    }`
+  );
   const resolvedContainerId = CONFIG.CONTAINER_ID;
   let resolvedVideoUrl = CONFIG.VIDEO_URL;
 
   // Initialize tracking system
-  if (window.LBannerTracking) {
+  if (window.LBannerTracking && typeof window.LBannerTracking.init === "function") {
     window.LBannerTracking.init();
   }
 
@@ -462,6 +615,9 @@ async function initLBanner(options) {
     throw new Error("No valid banners found in VAST XML");
   }
 
+  // Prefetch all banner segment images for instant display
+  prefetchBannerImages(parsedBanners);
+
   // Initialize Shaka Player if video URL provided
   let shakaPlayer = null;
   if (resolvedVideoUrl) {
@@ -470,8 +626,8 @@ async function initLBanner(options) {
     console.log("[Main] Shaka Player initialized");
   } else {
     // Try to get existing player instance
-    const video = document.getElementById("video-element");
-    if (video && video.getAttribute("data-shaka-player")) {
+    const videoEl = document.getElementById("video-element");
+    if (videoEl && videoEl.getAttribute("data-shaka-player")) {
       // Player might already be initialized
       console.log("[Main] Using existing video player");
     } else {
@@ -483,8 +639,11 @@ async function initLBanner(options) {
 
   // Initialize banner analytics (if enabled)
   const video = document.getElementById("video-element");
-  
-  if (window.LBannerAnalytics && typeof window.LBannerAnalytics.init === 'function') {
+
+  if (
+    window.LBannerAnalytics &&
+    typeof window.LBannerAnalytics.init === "function"
+  ) {
     console.log("[Main] Initializing LBannerAnalytics...");
     window.LBannerAnalytics.init({
       apiKey: CONFIG.API_KEY,
@@ -500,14 +659,27 @@ async function initLBanner(options) {
     });
     console.log("[Main] LBannerAnalytics initialized");
   } else {
-    console.log("[Main] Analytics disabled - skipping LBannerAnalytics initialization");
+    console.log(
+      "[Main] Analytics disabled - skipping LBannerAnalytics initialization"
+    );
   }
 
   // Setup time-based banner display using VSAT Display timing
-  setupBannerTiming(video);
-  console.log("[Main] Banner timing setup complete");
+  if (video) {
+    setupBannerTiming(video);
+    console.log("[Main] Banner timing setup complete");
+  } else {
+    console.warn("[Main] Video element #video-element not found - skipping banner timing setup");
+  }
+
+  // Initial behavior: do NOT show banner at 0s.
+  // Banners will appear when:
+  // - Time enters their timing window OR
+  // - User pauses and SHOW_BANNERS_ON_PAUSE = true
   console.log("[Main] ✓ L-Banner system initialized successfully!");
-  console.log(`[Main] Loaded ${Object.keys(parsedBanners).length} banner(s) from VAST`);
+  console.log(
+    `[Main] Loaded ${Object.keys(parsedBanners).length} banner(s) from VAST`
+  );
 
   return {
     banners: parsedBanners,

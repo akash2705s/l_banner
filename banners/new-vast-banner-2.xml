@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="4.1">
+  <Ad id="new-vast-banner-2">
+    <InLine>
+      <AdSystem version="4.1">CanvasAdServer</AdSystem>
+      <AdTitle>New VAST L-Banner 2</AdTitle>
+      <Impression><![CDATA[https://canvas-siau-server.vercel.app/api/track/impression]]></Impression>
+
+      <Creatives>
+        <Creative id="linear-new-vast-banner-2" sequence="1">
+          <Linear>
+            <Duration>00:01:00</Duration>
+            <MediaFiles>
+              <MediaFile
+                delivery="progressive"
+                type="video/mp4"
+                width="1920"
+                height="1080"
+                bitrate="3500"><![CDATA[https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd]]></MediaFile>
+            </MediaFiles>
+            <TrackingEvents>
+              <Tracking event="start"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/start]]></Tracking>
+              <Tracking event="firstQuartile"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/q1]]></Tracking>
+              <Tracking event="midpoint"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/q2]]></Tracking>
+              <Tracking event="thirdQuartile"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/q3]]></Tracking>
+              <Tracking event="complete"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/complete]]></Tracking>
+            </TrackingEvents>
+            <VideoClicks>
+              <ClickThrough><![CDATA[https://canvas.space]]></ClickThrough>
+            </VideoClicks>
+          </Linear>
+        </Creative>
+      </Creatives>
+
+      <Extensions>
+        <Extension type="l-banner">
+          <LBanner>
+            <!-- Horizontal segment (bottom side) -->
+            <Horizontal>
+              <ImageURL>
+                <![CDATA[https://siau.s3.us-east-1.amazonaws.com/uploads/handwriting_sd2_example_7-1763796780922-670199142.png]]>
+              </ImageURL>
+              <Width>400</Width>
+              <Height>120</Height>
+              <X>40</X>
+              <Y>760</Y>
+              <Buttons>
+                <Button id="undefined-btn" defaultFocus="true" role="primary">
+                  <Label>Learn More</Label>
+                  <Position>
+                    <X>420</X>
+                    <Y>780</Y>
+                    <Width>180</Width>
+                    <Height>60</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough>
+                      <![CDATA[https://canvas.space]]>
+                    </ClickThrough>
+                    <DeepLink/>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://canvas-siau-server.vercel.app/api/track/creativeClick/elem_l_banner_1763796348417/segment2]]>
+                    </Tracking>
+                    <Tracking event="viewable">
+                      <![CDATA[https://canvas-siau-server.vercel.app/api/track/creativeView/elem_l_banner_1763796348417/segment2]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+              </Buttons>
+            </Horizontal>
+            <!-- Vertical segment (left side) -->
+            <Vertical>
+              <ImageURL>
+                <![CDATA[https://siau.s3.us-east-1.amazonaws.com/uploads/handwriting_sd2_example_1-1763796780914-640362649.png]]>
+              </ImageURL>
+              <Width>250</Width>
+              <Height>400</Height>
+              <X>40</X>
+              <Y>260</Y>
+              <Buttons>
+                <Button id="undefined-btn" role="secondary">
+                  <Label>Get Offer</Label>
+                  <Position>
+                    <X>60</X>
+                    <Y>640</Y>
+                    <Width>140</Width>
+                    <Height>60</Height>
+                  </Position>
+                  <Action type="clickthrough">
+                    <ClickThrough>
+                      <![CDATA[https://canvas.space]]>
+                    </ClickThrough>
+                    <DeepLink/>
+                  </Action>
+                  <TrackingEvents>
+                    <Tracking event="click">
+                      <![CDATA[https://canvas-siau-server.vercel.app/api/track/creativeClick/elem_l_banner_1763796348417/segment1]]>
+                    </Tracking>
+                    <Tracking event="viewable">
+                      <![CDATA[https://canvas-siau-server.vercel.app/api/track/creativeView/elem_l_banner_1763796348417/segment1]]>
+                    </Tracking>
+                  </TrackingEvents>
+                </Button>
+              </Buttons>
+            </Vertical>
+            <!-- Display timing -->
+            <Display>
+              <StartOffset>00:00:03</StartOffset>
+              <EndOffset>00:00:13</EndOffset>
+            </Display>
+          </LBanner>
+        </Extension>
+      </Extensions>
+    </InLine>
+  </Ad>
+</VAST>
+

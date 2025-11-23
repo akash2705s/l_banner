@@ -12,7 +12,6 @@
         <video
           id="video-element"
           class="shaka-video"
-          data-video-src="https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd"
           autoplay
           muted
           playsinline
@@ -35,7 +34,8 @@
         try {
           await window.LBannerPlayer.init({
             apiKey: "your-api-key-here",
-            vastUrl: "./banners/left-bottom-image.xml",
+            vastUrl:
+          "./banners/new-l-banner.xml",
             enableCookieTracking: true, // Set to true/false to enable/disable cookie tracking
             showBannersOnPause: true, // Set to true/false to show/hide banners on pause
           });
@@ -44,5 +44,5 @@
         }
       });
     </script>
-  </body>
+  </body> 
 </html>

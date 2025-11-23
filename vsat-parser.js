@@ -220,12 +220,22 @@ const VSATParser = {
 
         console.log(`[VSATParser] Parsed image URL for ${segmentId}:`, imageUrl);
 
+        // Detect if URL is a video based on file extension
+        const isVideoUrl = (url) => {
+            if (!url) return false;
+            const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv', '.m4v', '.flv', '.wmv'];
+            const lowerUrl = url.toLowerCase();
+            return videoExtensions.some(ext => lowerUrl.includes(ext));
+        };
+
+        const mediaType = isVideoUrl(imageUrl) ? "video" : "image";
+
         const buttons = segmentEl.querySelectorAll("Button");
 
         const element = {
             id: `content_${segmentId}`,
             segmentId: segmentId,
-            type: "image",
+            type: mediaType,
             backgroundColor: backgroundColor,
             media: {
                 url: imageUrl,

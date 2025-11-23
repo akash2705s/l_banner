@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>L-Banner CDN Example</title>
+    <!-- L-Banner Player Script -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/akash768145s/L_Banner@1.0/dist/lbanner-player.min.css"
+    />
+  </head>
+  <body>
+    <!-- Video Player Container -->
+    <div id="player-shell" class="shaka-player-container">
+      <div id="video-area" data-role="video-area">
+        <video
+          id="video-element"
+          class="shaka-video"
+          data-video-src="http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+          autoplay
+          muted
+          playsinline
+        ></video>
+      </div>
+      <div id="l-banner-host" aria-live="polite"></div>
+    </div>
+
+    <!-- L-Banner Player Library -->
+    <script src="https://cdn.jsdelivr.net/gh/akash768145s/L_Banner@1.0/dist/lbanner-player.min.js"></script>
+    <script>
+      // Analytics Configuration - MUST be set before initialization
+      window.ENABLE_ANALYTICS = true; // Required for banners to work
+      window.LBannerAnalyticsConfig = {
+        showStatusPanel: false,
+        showCachePanel: false,
+      };
+
+      // Initialize L-Banner Player
+      document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          const ENABLE_COOKIE_TRACKING = false; // Set to true/false
+          const SHOW_BANNERS_ON_PAUSE = true; // Set to true/false
+
+          // VAST URL that requires authentication
+          const vastUrl =
+            "https://canvas-siau-server-seven.vercel.app/api/vastBrand/691967ce86a661e6c4af1c86/random";
+          const authToken =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MTk2N2MzODZhNjYxZTZjNGFmMWM4MSIsImVtYWlsIjoiY2hpcmFnQGNhbnZhcy5zcGFjZSIsImlhdCI6MTc2MzkwNzM3MiwiZXhwIjoxNzY0NTEyMTcyfQ.2avb-y9mrZ5TUeQehQUF9Luj1dCkTZPJ806006EV7dY";
+
+          // Fetch VAST XML with authorization header
+          console.log("Fetching VAST XML with authentication...");
+          const vastResponse = await fetch(vastUrl, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              Accept: "application/xml, text/xml, */*",
+            },
+          });
+
+          if (!vastResponse.ok) {
+            throw new Error(
+              `Failed to fetch VAST: ${vastResponse.status} ${vastResponse.statusText}`
+            );
+          }
+
+          const vastXml = await vastResponse.text();
+          console.log("VAST XML fetched successfully");
+
+          // Extract video URL from VAST XML if present
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(vastXml, "text/xml");
+          const mediaFile = xmlDoc.querySelector("MediaFile");
+          let videoUrl = null;
+
+          if (mediaFile && mediaFile.textContent) {
+            videoUrl = mediaFile.textContent.trim();
+            console.log("Extracted video URL from VAST:", videoUrl);
+            // Set video URL on video element
+            const videoElement = document.getElementById("video-element");
+            if (videoElement) {
+              videoElement.setAttribute("data-video-src", videoUrl);
+              console.log("Set data-video-src on video element");
+            }
+          } else {
+            // Fallback video URL if not found in VAST
+            videoUrl =
+              "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+            const videoElement = document.getElementById("video-element");
+            if (videoElement) {
+              videoElement.setAttribute("data-video-src", videoUrl);
+            }
+            console.log("Using fallback video URL");
+          }
+
+          // Create a blob URL from the VAST XML so the player can fetch it
+          const blob = new Blob([vastXml], { type: "application/xml" });
+          const blobUrl = URL.createObjectURL(blob);
+          console.log("Created blob URL for VAST XML");
+
+          // Initialize player with the blob URL and video URL
+          await window.LBannerPlayer.init({
+            apiKey: "your-api-key-here",
+            vastUrl: blobUrl,
+            videoUrl: videoUrl, // Pass video URL to player
+            enableCookieTracking: ENABLE_COOKIE_TRACKING,
+            showBannersOnPause: SHOW_BANNERS_ON_PAUSE,
+          });
+
+          // Clean up blob URL after a delay (player should have fetched it by then)
+          setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+          }, 5000);
+        } catch (error) {
+          console.error("Failed to initialize L-Banner:", error);
+        }
+      });
+    </script>
+  </body>
+</html>
