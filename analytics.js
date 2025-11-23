@@ -515,20 +515,23 @@
    */
   function handleResize() {
     if (state.currentBanner) {
-      // Recalculate video offsets and reposition segments
-      const { configuration } = state.currentBanner;
-      if (configuration?.layout) {
-        applyVideoOffsets(configuration.layout);
-        // Reposition segments
-        const segments = document.querySelectorAll(".lb-segment");
-        segments.forEach((node) => {
-          const segmentId = node.dataset.segmentId;
-          const segment = configuration.layout.segments.find((s) => s.id === segmentId);
-          if (segment) {
-            positionSegment(node, segment);
-          }
-        });
-      }
+      // Small delay to ensure fullscreen transition completes
+      setTimeout(() => {
+        const { configuration } = state.currentBanner;
+        if (configuration?.layout) {
+          // Recalculate video offsets first
+          applyVideoOffsets(configuration.layout);
+          // Then reposition segments (this ensures offsets are available for positioning)
+          const segments = document.querySelectorAll(".lb-segment");
+          segments.forEach((node) => {
+            const segmentId = node.dataset.segmentId;
+            const segment = configuration.layout.segments.find((s) => s.id === segmentId);
+            if (segment) {
+              positionSegment(node, segment);
+            }
+          });
+        }
+      }, 50); // Small delay to ensure fullscreen dimensions are stable
     }
   }
 
@@ -654,8 +657,9 @@
         const segmentBottom = y + height;
 
         // Determine segment type and position
-        const isVertical = segment.type === "vertical" || height > width;
-        const isHorizontal = segment.type === "horizontal" || width > height;
+        // Prioritize explicit type from parser over dimension ratio
+        const isVertical = segment.type === "vertical" || (segment.type !== "horizontal" && height > width);
+        const isHorizontal = segment.type === "horizontal" || (segment.type !== "vertical" && width > height);
         const positionHint = segment.position;
         const isLeftEdge = positionHint === "left" || x === 0;
         const isRightEdge =
@@ -671,10 +675,12 @@
             // Left side - video should shrink from left
             // For left-edge segments, use width directly (like relative positioning)
             offsets.left = Math.max(offsets.left, width);
+            console.log(`[LBannerAnalytics] Vertical left segment: width=${width}px, offset.left=${offsets.left}px`);
           } else {
             // Right side - video should shrink from right
             // Use width directly for consistent behavior
             offsets.right = Math.max(offsets.right, width);
+            console.log(`[LBannerAnalytics] Vertical right segment: width=${width}px, offset.right=${offsets.right}px`);
           }
         }
 
@@ -708,6 +714,9 @@
 
     Object.entries(offsets).forEach(([position, value]) => {
       state.playerShell.style.setProperty(varMap[position], `${value}px`);
+      if (value > 0) {
+        console.log(`[LBannerAnalytics] Applied video offset: ${varMap[position]} = ${value}px`);
+      }
     });
   }
 
@@ -834,10 +843,27 @@
           node.style.top = "auto"; // Override any top positioning
         } else {
           // Right-bottom: start from X position, extend to right, always at bottom
-          node.style.left = `${segment.x}px`;
-          node.style.bottom = "0px";
-          node.style.width = `calc(100% - ${segment.x}px)`;
-          node.style.height = `${segment.height}px`;
+          // Use fixed reference width (1280px from CSS) for consistent percentage calculation
+          // This ensures proper scaling in both normal and fullscreen modes
+          const referenceWidth = 1280; // Default shell width from CSS (min(90vw, 1280px))
+          const xPercent = Math.min(100, Math.max(0, (segment.x / referenceWidth) * 100));
+          const leftOffset = getCSSVar("--lb-left-width");
+          
+          // If horizontal starts at or after the vertical segment edge, align to video offset
+          // This ensures the horizontal segment aligns with the video area in fullscreen
+          if (leftOffset > 0 && segment.x >= leftOffset - 10) { // 10px tolerance for rounding
+            // Start at video offset to maintain perfect alignment with video area
+            node.style.left = `var(--lb-left-width)`;
+            node.style.bottom = "0px";
+            node.style.width = `calc(100% - var(--lb-left-width) - var(--lb-right-width))`;
+            node.style.height = `${segment.height}px`;
+          } else {
+            // Use percentage-based positioning for proper fullscreen scaling
+            node.style.left = `${xPercent}%`;
+            node.style.bottom = "0px";
+            node.style.width = `calc(100% - ${xPercent}% - var(--lb-right-width))`;
+            node.style.height = `${segment.height}px`;
+          }
           node.style.top = "auto"; // Override any top positioning
         }
       }

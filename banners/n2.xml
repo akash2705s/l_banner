@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VAST version="4.1">
+  <Ad id="new-l-banner">
+    <InLine>
+      <AdSystem version="4.1">CanvasAdServer</AdSystem>
+      <AdTitle>New L-Banner</AdTitle>
+      <Impression><![CDATA[https://canvas-siau-server.vercel.app/api/track/impression]]></Impression>
+
+      <Creatives>
+        <Creative id="linear-new-l-banner" sequence="1">
+          <Linear>
+            <MediaFiles>
+              <MediaFile
+                delivery="progressive"
+                type="video/mp4"
+                width="1920"
+                height="1080"
+                bitrate="3500"><![CDATA[http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4]]></MediaFile>
+            </MediaFiles>
+            <TrackingEvents>
+              <Tracking event="start"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/start]]></Tracking>
+              <Tracking event="firstQuartile"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/q1]]></Tracking>
+              <Tracking event="midpoint"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/q2]]></Tracking>
+              <Tracking event="thirdQuartile"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/q3]]></Tracking>
+              <Tracking event="complete"><![CDATA[https://canvas-siau-server.vercel.app/api/track/video/complete]]></Tracking>
+            </TrackingEvents>
+            <VideoClicks>
+              <ClickThrough><![CDATA[https://test.com]]></ClickThrough>
+            </VideoClicks>
+          </Linear>
+        </Creative>
+      </Creatives>
+
+      <Extensions>
+        <Extension type="l-banner">
+          <LBanner>
+            <!-- Horizontal segment (bottom side) -->
+            <Horizontal>
+              <ImageURL>
+                <![CDATA[https://raw.githubusercontent.com/akash768145s/img/main/h1.png]]>
+              </ImageURL>
+              <Width>150</Width>
+              <Height>120</Height>
+              <X>200</X>
+              <Y>760</Y>
+            </Horizontal>
+            <!-- Vertical segment (left side) -->
+            <Vertical>
+              <ImageURL>
+                <![CDATA[https://raw.githubusercontent.com/akash768145s/img/main/v1.png]]>
+              </ImageURL>
+              <Width>500</Width>
+              <Height>300</Height>
+              <X>40</X>
+              <Y>260</Y>
+            </Vertical>
+            <!-- Display timing -->
+            <Display>
+              <StartOffset>00:00:30</StartOffset>
+              <EndOffset>00:00:60</EndOffset>
+            </Display>
+          </LBanner>
+        </Extension>
+      </Extensions>
+    </InLine>
+  </Ad>
+</VAST>
+
