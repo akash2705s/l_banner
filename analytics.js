@@ -718,6 +718,19 @@
         console.log(`[LBannerAnalytics] Applied video offset: ${varMap[position]} = ${value}px`);
       }
     });
+
+    // Calculate player shell width adjustment based on vertical banner width
+    // When vertical banner is wider than default (200px), increase player shell width
+    // This ensures the video area remains appropriately sized
+    const defaultVerticalWidth = 200;
+    const leftOffset = offsets.left;
+    const rightOffset = offsets.right;
+    const shellWidthAdjust = Math.max(0, (leftOffset - defaultVerticalWidth) + (rightOffset - defaultVerticalWidth));
+    
+    state.playerShell.style.setProperty("--lb-shell-width-adjust", `${shellWidthAdjust}px`);
+    if (shellWidthAdjust > 0) {
+      console.log(`[LBannerAnalytics] Adjusted player shell width by ${shellWidthAdjust}px to accommodate larger banner`);
+    }
   }
 
   /**
